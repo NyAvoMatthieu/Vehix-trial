@@ -17,31 +17,32 @@ class UserSeeder extends Seeder
     {
         // Admin par défaut
         User::create([
-            'name' => 'Administrateur',
+            'name' => 'Hasnreziga Admin',
             'email' => 'admin@automanager.com',
-            'password' => Hash::make('password'),
+            'password' => Hash::make('#HasVehix2025!'),
             'role' => UserRole::ADMIN,
             'email_verified_at' => now(),
         ]);
 
         // Validateur par défaut
         User::create([
-            'name' => 'Jean Validateur',
-            'email' => 'validator@automanager.com',
-            'password' => Hash::make('password'),
+            'name' => 'Hasina ANDL',
+            'email' => 'hasinaandritina538@gmail.com',
+            'password' => Hash::make('#HasVehix2025!'),
             'role' => UserRole::VALIDATOR,
             'email_verified_at' => now(),
         ]);
 
         // Clients de démonstration
-        $clients = [
+        /*$clients = [
             [
                 'name' => 'Marie Dupont',
                 'email' => 'marie@example.com',
                 'password' => Hash::make('password'),
                 'role' => UserRole::CLIENT,
                 'email_verified_at' => now(),
-            ],
+            ],0.
+
             [
                 'name' => 'Pierre Martin',
                 'email' => 'pierre@example.com',
@@ -60,6 +61,6 @@ class UserSeeder extends Seeder
 
         foreach ($clients as $client) {
             User::create($client);
-        }
+        }*/
     }
 }

@@ -2,18 +2,27 @@
 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Broadcast;
 use Inertia\Inertia;
 
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\VehiculeController;
 use App\Http\Controllers\AssuranceController;
-use App\Http\Controllers\ReparationController;
 use App\Http\Controllers\MaintenanceController;
 use App\Http\Controllers\RavitaillementController;
 use App\Http\Controllers\TrajetController;
-use App\Http\Controllers\RecuController;
 use App\Http\Controllers\ProprietaireController;
 use App\Http\Controllers\AdministrateurController;
+use App\Http\Controllers\VisiteTechniqueController;
+use App\Http\Controllers\FuelPriceController;
+use App\Http\Controllers\ContactController;
+use App\Http\Controllers\NotificationController;
+//use App\Http\Controllers\MarqueController;
+use App\Http\Controllers\RapportController;
+use App\Http\Controllers\ConsumptionAnalysisController;
+use App\Http\Controllers\Auth\ProprietairePasswordRecoveryController;
+
+
 
 // Accueil
 Route::get('/', function () {
@@ -25,6 +34,41 @@ Route::get('/', function () {
     ]);
 });
 
+Route::post('/contact', [ContactController::class, 'store'])->name('contact.store');
+Route::get('/cgu', function () {
+    return Inertia::render('cgu');
+})->name('cgu');
+
+
+
+    Route::middleware('guest')->group(function () {
+
+        // Étape 1 : Formulaire de saisie de l'email
+        Route::get('/password/recovery', [ProprietairePasswordRecoveryController::class, 'showEmailForm'])
+            ->name('password.recovery.email');
+
+        // Étape 2 : Vérification de l'email et génération des questions
+        Route::post('/password/recovery/verify-email', [ProprietairePasswordRecoveryController::class, 'verifyEmail'])
+            ->name('password.recovery.verify-email');
+
+        // Étape 3 : Affichage des questions de vérification
+        Route::get('/password/recovery/questions/{token}', [ProprietairePasswordRecoveryController::class, 'showQuestionsForm'])
+            ->name('password.recovery.questions');
+
+        // Étape 4 : Vérification des réponses
+        Route::post('/password/recovery/verify-answers/{token}', [ProprietairePasswordRecoveryController::class, 'verifyAnswers'])
+            ->name('password.recovery.verify-answers');
+
+        // Étape 5 : Formulaire de réinitialisation du mot de passe
+        Route::get('/password/recovery/reset/{token}', [ProprietairePasswordRecoveryController::class, 'showResetForm'])
+            ->name('password.recovery.reset');
+
+        // Étape 6 : Enregistrement du nouveau mot de passe
+        Route::post('/password/recovery/reset/{token}', [ProprietairePasswordRecoveryController::class, 'resetPassword'])
+            ->name('password.recovery.reset-password');
+    });
+
+    
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
@@ -35,6 +79,20 @@ Route::middleware([
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    Route::get('/rapports', [RapportController::class, 'index'])->name('rapports.index');
+
+     // Analyse de consommation d'un véhicule
+    Route::get('/vehicules/{vehicule}/consumption', [ConsumptionAnalysisController::class, 'show'])
+        ->name('vehicules.consumption');
+
+    // API pour obtenir l'estimation de consommation (AJAX)
+    Route::get('/api/vehicules/{vehicule}/consumption/estimate', [ConsumptionAnalysisController::class, 'estimate'])
+        ->name('api.vehicules.consumption.estimate');
+
+    // Forcer la mise à jour de la consommation
+    Route::post('/vehicules/{vehicule}/consumption/update', [ConsumptionAnalysisController::class, 'update'])
+        ->name('vehicules.consumption.update');
+
     // Gestion des véhicules (sélection, détail en attente)
     Route::get('/vehicules/selection', [VehiculeController::class, 'selection'])
         ->name('vehicules.selection');
@@ -42,25 +100,30 @@ Route::middleware([
     Route::post('/vehicules/{vehicule}/select', [VehiculeController::class, 'select'])
         ->name('vehicules.select');
 
+    // Désélectionner un véhicule
+    Route::post('/vehicules/deselect', [VehiculeController::class, 'deselect'])
+        ->name('vehicules.deselect');
+
     Route::get('/vehicules/{vehicule}/pending', [VehiculeController::class, 'pendingDetail'])
         ->name('vehicules.pending-detail');
 
     // Vehicle CRUD routes
     Route::resource('vehicules', VehiculeController::class);
 
-    // Routes avec validation de véhicule (réservées aux utilisateurs avec véhicule validé)
+    // Propriétaires routes
+    Route::resource('proprietaires', ProprietaireController::class);
+
+    // Routes avec validation de véhicule
     Route::middleware(['vehicule.validation'])->group(function () {
-        // Autres ressources
         Route::resource('assurances', AssuranceController::class);
-        Route::resource('reparations', ReparationController::class);
-        Route::resource('maintenances', MaintenanceController::class); // Vidanges
+        Route::resource('maintenances', MaintenanceController::class);
         Route::resource('ravitaillements', RavitaillementController::class);
         Route::resource('trajets', TrajetController::class);
-        Route::resource('recus', RecuController::class);
-        Route::resource('proprietaires', ProprietaireController::class);
+        Route::resource('visite-techniques', VisiteTechniqueController::class);
+
     });
 
-    // Routes de validation (réservées aux validateurs/admins)
+    // Routes de validation
     Route::middleware(['role:validator,administrateur'])
         ->prefix('validator')
         ->name('validator.')
@@ -68,6 +131,8 @@ Route::middleware([
             Route::get('/pending', [VehiculeController::class, 'pending'])->name('pending');
             Route::post('/vehicules/{vehicule}/validate', [VehiculeController::class, 'validateVehicule'])
                 ->name('vehicules.validate');
+            Route::post('/maintenances/{maintenance}/validate', [MaintenanceController::class, 'validate'])
+                ->name('maintenances.validateMaintenance');
         });
 
     // Routes d'administration
@@ -81,5 +146,53 @@ Route::middleware([
             Route::post('/users/{user}/block', [AdministrateurController::class, 'blockUser'])->name('users.block');
             Route::post('/users/{user}/unblock', [AdministrateurController::class, 'unblockUser'])->name('users.unblock');
         });
+
+    // Fuel Prices Management
+    Route::middleware(['auth', 'role:administrateur,validator'])->group(function () {
+        Route::prefix('admin/fuel-prices')->name('admin.fuel-prices.')->group(function () {
+            Route::get('/', [FuelPriceController::class, 'index'])->name('index');
+            Route::get('/create', [FuelPriceController::class, 'create'])->name('create');
+            Route::post('/', [FuelPriceController::class, 'store'])->name('store');
+            Route::get('/{fuelPrice}/edit', [FuelPriceController::class, 'edit'])->name('edit');
+            Route::put('/{fuelPrice}', [FuelPriceController::class, 'update'])->name('update');
+            Route::delete('/{fuelPrice}', [FuelPriceController::class, 'destroy'])->name('destroy');
+            Route::post('/{fuelPrice}/toggle-active', [FuelPriceController::class, 'toggleActive'])->name('toggle-active');
+        });
+    });
+
+    // Routes des notifications
+    Route::middleware(['auth'])->group(function () {
+        Route::get('/notifications', [NotificationController::class, 'index'])
+            ->name('notifications.index');
+
+        Route::get('/api/notifications', [NotificationController::class, 'getNotifications'])
+            ->name('api.notifications.get');
+
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
+            ->name('notifications.read');
+
+        Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
+            ->name('notifications.mark-all-read');
+
+        Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])
+            ->name('notifications.destroy');
+
+        Route::delete('/notifications', [NotificationController::class, 'deleteAll'])
+            ->name('notifications.delete-all');
+    });
+
+    // Broadcasting auth
+    Route::post('/broadcasting/auth', function (Illuminate\Http\Request $request) {
+        return Broadcast::auth($request);
+    })->middleware(['auth']);
+
+    /* Admin Marques routes
+    Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin.')->group(function () {
+        Route::get('/marques', [MarqueController::class, 'index'])->name('marques.index');
+        Route::get('/marques/create', [MarqueController::class, 'create'])->name('marques.create');
+        Route::post('/marques', [MarqueController::class, 'storeAdmin'])->name('marques.store');
+        Route::delete('/marques/{marque}', [MarqueController::class, 'destroy'])->name('marques.destroy');
+    });*/
+
 
 });

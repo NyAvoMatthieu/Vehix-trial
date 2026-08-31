@@ -2,7 +2,10 @@
 import { onMounted, ref } from 'vue';
 
 defineProps({
-    modelValue: String,
+    modelValue: {
+        type: [String, Number],  // Accepte à la fois String et Number
+        default: ''
+    },
 });
 
 defineEmits(['update:modelValue']);

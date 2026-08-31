@@ -33,6 +33,11 @@ class User extends Authenticatable
         'role',
         'login_attempts',
         'blocked_until',
+
+        'recovery_token',
+        'recovery_token_expires_at',
+        'recovery_attempts',
+        'recovery_blocked_until',
     ];
 
     /**
@@ -68,6 +73,9 @@ class User extends Authenticatable
             'password' => 'hashed',
             'blocked_until' => 'datetime',
             'role' => UserRole::class,
+
+            'recovery_token_expires_at' => 'datetime',
+            'recovery_blocked_until' => 'datetime',
         ];
     }
 
@@ -75,16 +83,12 @@ class User extends Authenticatable
     public function vehicules()
     {
         return $this->hasMany(Vehicule::class);
+        //return $this->belongsToMany(Vehicule::class);
     }
 
     public function proprietaire()
     {
         return $this->hasOne(Proprietaire::class);
-    }
-
-    public function reparations()
-    {
-        return $this->hasManyThrough(Reparation::class, Vehicule::class);
     }
 
     public function maintenances()
@@ -105,6 +109,11 @@ class User extends Authenticatable
     public function trajets()
     {
         return $this->hasManyThrough(Trajet::class, Vehicule::class);
+    }
+
+    public function visiteTechniques()
+    {
+        return $this->hasManyThrough(VisiteTechnique::class, Vehicule::class);
     }
 
     // Role checking methods
@@ -158,7 +167,7 @@ class User extends Authenticatable
     public function getSelectedVehicule()
     {
         $vehiculeId = session('selected_vehicule_id');
-        
+
         if (!$vehiculeId) {
             return null;
         }
@@ -179,6 +188,6 @@ class User extends Authenticatable
     {
         return !$this->isBlocked();
     }
-    
+
 
 }

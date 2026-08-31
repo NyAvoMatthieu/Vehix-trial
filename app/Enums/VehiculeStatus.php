@@ -34,9 +34,16 @@ enum VehiculeStatus: string
 
     public function canEdit(): bool
     {
-        return match($this) {
+        //non modifeir fonction
+        /*return match($this) {
             self::PENDING, self::TO_CORRECT, self::REJECTED, self::DUPLICATE => true,
             self::VALIDATED => false,
+        };*/
+
+        // modifeir fonction
+        return match($this) {
+            self::PENDING, self::TO_CORRECT, self::REJECTED, self::DUPLICATE => true,
+            self::VALIDATED => true,
         };
     }
 

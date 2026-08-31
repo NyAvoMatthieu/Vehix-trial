@@ -22,13 +22,6 @@ class DatabaseSeeder extends Seeder
         ]);*/
         $this->call([
             UserSeeder::class,
-            VehiculeSeeder::class,
-            AssuranceSeeder::class,
-            ReparationSeeder::class,
-            MaintenanceSeeder::class,
-            RavitaillementSeeder::class,
-            TrajetSeeder::class,
-            ProprietaireSeeder::class,
         ]);
     }
 }

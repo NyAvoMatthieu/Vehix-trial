@@ -8,6 +8,27 @@
           <p class="mt-2 text-sm text-gray-600">
             Sélectionnez un véhicule validé pour accéder au tableau de bord
           </p>
+
+          <!-- Alerte véhicule actuellement sélectionné -->
+          <div v-if="selectedVehicule" class="mt-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div class="flex items-center">
+              <CheckCircleIcon class="h-5 w-5 text-blue-600 mr-3" />
+              <div class="flex-1">
+                <p class="text-sm font-medium text-blue-900">
+                  Véhicule actif : {{ selectedVehicule.alias }} {{ selectedVehicule.make }} 
+                </p>
+                <p class="text-xs text-blue-700 mt-1">
+                  {{ selectedVehicule.license_plate }} • Cliquez sur un autre véhicule pour changer
+                </p>
+              </div>
+              <Link
+                :href="route('dashboard')"
+                class="ml-4 inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Retour au dashboard
+              </Link>
+            </div>
+          </div>
         </div>
 
         <!-- Vehicule Cards Grid -->
@@ -16,11 +37,25 @@
           <div
             v-for="vehicule in vehicules"
             :key="vehicule.id"
-            class="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200 cursor-pointer"
+            :class="[
+              'bg-white rounded-lg shadow-md overflow-hidden transition-all duration-200',
+              isCurrentlySelected(vehicule.id)
+                ? 'ring-4 ring-blue-500 ring-offset-2 shadow-xl'
+                : 'hover:shadow-lg',
+              getStatusValue(vehicule.status) === 'valide' ? 'cursor-pointer' : ''
+            ]"
             @click="handleCardClick(vehicule)"
-            >
+          >
+            <!-- Badge véhicule actif -->
+            <div v-if="isCurrentlySelected(vehicule.id)" class="absolute top-2 right-2 z-10">
+              <span class="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-600 text-white shadow-lg">
+                <CheckCircleIcon class="h-4 w-4 mr-1" />
+                Actif
+              </span>
+            </div>
+
             <!-- Card Header with Status -->
-            <div :class="getHeaderClass(vehicule.status)" class="px-6 py-4">
+            <div :class="getHeaderClass(vehicule.status)" class="px-6 py-4 relative">
               <div class="flex items-center justify-between">
                 <div class="flex items-center space-x-3">
                   <TruckIcon class="h-8 w-8 text-white" />
@@ -36,7 +71,6 @@
                 <component :is="getStatusIcon(vehicule.status)" class="h-6 w-6 text-white" />
               </div>
             </div>
-
 
             <!-- Card Body -->
             <div class="px-6 py-4">
@@ -65,81 +99,89 @@
               </div>
 
               <!-- Action Buttons -->
-                <div class="mt-6 space-y-2" @click.stop>
-                <!-- Validated Vehicule - Access Dashboard -->
+              <div class="mt-6 space-y-2" @click.stop>
+                <!-- Validated Vehicule - Access Dashboard or Change Vehicle -->
                 <button
-                    v-if="getStatusValue(vehicule.status) === 'valide'"
-                    @click="selectVehicule(vehicule.id)"
-                    class="w-full flex items-center justify-center px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
+                  v-if="getStatusValue(vehicule.status) === 'valide'"
+                  @click="selectVehicule(vehicule.id)"
+                  :class="[
+                    'w-full flex items-center justify-center px-4 py-2 rounded-md transition-colors',
+                    isCurrentlySelected(vehicule.id)
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-indigo-600 text-white hover:bg-indigo-700'
+                  ]"
                 >
-                    <ArrowRightIcon class="h-5 w-5 mr-2" />
-                    Accéder au tableau de bord
+                  <component
+                    :is="isCurrentlySelected(vehicule.id) ? CheckCircleIcon : ArrowRightIcon"
+                    class="h-5 w-5 mr-2"
+                  />
+                  {{ isCurrentlySelected(vehicule.id) ? 'Véhicule actif' : 'Sélectionner ce véhicule' }}
                 </button>
 
                 <!-- Pending Vehicule - View Details -->
                 <Link
-                    v-if="getStatusValue(vehicule.status) === 'en_attente'"
-                    :href="route('vehicules.pending-detail', vehicule.id)"
-                    class="w-full flex items-center justify-center px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
+                  v-if="getStatusValue(vehicule.status) === 'en_attente'"
+                  :href="route('vehicules.pending-detail', vehicule.id)"
+                  class="w-full flex items-center justify-center px-4 py-2 bg-yellow-600 text-white rounded-md hover:bg-yellow-700 transition-colors"
                 >
-                    <ClockIcon class="h-5 w-5 mr-2" />
-                    Voir le statut
+                  <ClockIcon class="h-5 w-5 mr-2" />
+                  Voir le statut
                 </Link>
 
                 <!-- Rejected/To Correct/Duplicate - Edit -->
                 <Link
-                    v-if="['refuse', 'a_corriger', 'doublon'].includes(getStatusValue(vehicule.status))"
-                    :href="route('vehicules.edit', vehicule.id)"
-                    class="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+                  v-if="['refuse', 'a_corriger', 'doublon'].includes(getStatusValue(vehicule.status))"
+                  :href="route('vehicules.edit', vehicule.id)"
+                  class="w-full flex items-center justify-center px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
                 >
-                    <PencilIcon class="h-5 w-5 mr-2" />
-                    Corriger les informations
+                  <PencilIcon class="h-5 w-5 mr-2" />
+                  Corriger les informations
                 </Link>
 
                 <!-- Secondary Action: View Details -->
                 <Link
-                    :href="route('vehicules.show', vehicule.id)"
-                    class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+                  :href="route('vehicules.show', vehicule.id)"
+                  class="w-full flex items-center justify-center px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
                 >
-                    Voir les détails
+                  Voir les détails
                 </Link>
-                </div>
+              </div>
             </div>
           </div>
 
           <!-- Add New Vehicule Card -->
-        <Link
-        :href="route('vehicules.create')"
-        class="w-full h-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200 border-2 border-dashed border-gray-300 hover:border-indigo-400 flex items-center justify-center min-h-[400px] cursor-pointer group"
-        >
-        <div class="text-center p-6">
-            <PlusCircleIcon class="h-16 w-16 text-gray-400 group-hover:text-indigo-600 mx-auto mb-4 transition-colors" />
-            <h3 class="text-lg font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">
-            Ajouter un véhicule
-            </h3>
-            <p class="text-sm text-gray-500 mt-2">
-            Cliquez pour enregistrer un nouveau véhicule
-            </p>
-        </div>
-        </Link>
+          <Link
+            :href="route('vehicules.create')"
+            class="w-full h-full bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-200 border-2 border-dashed border-gray-300 hover:border-indigo-400 flex items-center justify-center min-h-[400px] cursor-pointer group"
+          >
+            <div class="text-center p-6">
+              <PlusCircleIcon class="h-16 w-16 text-gray-400 group-hover:text-indigo-600 mx-auto mb-4 transition-colors" />
+              <h3 class="text-lg font-semibold text-gray-700 group-hover:text-indigo-600 transition-colors">
+                Ajouter un véhicule
+              </h3>
+              <p class="text-sm text-gray-500 mt-2">
+                Cliquez pour enregistrer un nouveau véhicule
+              </p>
+            </div>
+          </Link>
         </div>
 
         <!-- Empty State -->
         <div v-if="!vehicules || vehicules.length === 0" class="text-center py-12">
-        <TruckIcon class="h-16 w-16 text-gray-400 mx-auto mb-4" />
-        <h3 class="text-lg font-semibold text-gray-900 mb-2">
+          <TruckIcon class="h-16 w-16 text-gray-400 mx-auto mb-4" />
+          <h3 class="text-lg font-semibold text-gray-900 mb-2">
             Aucun véhicule enregistré
-        </h3>
-        <p class="text-gray-600 mb-6">
+          </h3>
+          <p class="text-gray-600 mb-6">
             Commencez par ajouter votre premier véhicule
-        </p>
-        <Link
+          </p>
+          <Link
             :href="route('vehicules.create')"
             class="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 transition-colors"
-        >
+          >
             <PlusCircleIcon class="h-5 w-5 mr-2" />
             Ajouter un véhicule
-        </Link>
+          </Link>
         </div>
       </div>
     </div>
@@ -161,9 +203,16 @@ import {
   DocumentDuplicateIcon
 } from '@heroicons/vue/24/outline'
 
-defineProps({
-  vehicules: Array
+const props = defineProps({
+  vehicules: Array,
+  selectedVehiculeId: Number,
+  selectedVehicule: Object
 })
+
+// Vérifier si un véhicule est actuellement sélectionné
+const isCurrentlySelected = (vehiculeId) => {
+  return props.selectedVehiculeId === vehiculeId
+}
 
 // Fonction pour convertir le type de véhicule en label lisible
 const getVehiculeTypeLabel = (vehiculeType) => {
@@ -180,11 +229,8 @@ const getVehiculeTypeLabel = (vehiculeType) => {
 }
 
 const handleCardClick = (vehicule) => {
-  // Extraire la valeur du statut (support pour objet ou string)
   const statusValue = typeof vehicule.status === 'object' ? vehicule.status.value : vehicule.status
-  
-  console.log('Clic sur véhicule:', vehicule.id, 'Statut:', statusValue)
-  
+
   if (statusValue === 'valide') {
     selectVehicule(vehicule.id)
   } else {
@@ -193,6 +239,8 @@ const handleCardClick = (vehicule) => {
 }
 
 const selectVehicule = (vehiculeId) => {
+  // Même si le véhicule est déjà sélectionné, permettre la re-sélection
+  // pour retourner au dashboard
   router.post(route('vehicules.select', vehiculeId))
 }
 
@@ -200,6 +248,7 @@ const selectVehicule = (vehiculeId) => {
 const getStatusValue = (status) => {
   return typeof status === 'object' ? status.value : status
 }
+
 const getHeaderClass = (status) => {
   const statusValue = getStatusValue(status)
   const classes = {
@@ -235,6 +284,7 @@ const getStatusLabel = (status) => {
   }
   return labels[statusValue] || 'Inconnu'
 }
+
 const getStatusBadgeClass = (status) => {
   const statusValue = getStatusValue(status)
   const classes = {

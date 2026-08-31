@@ -33,9 +33,17 @@ class AdministrateurController extends Controller
             $query->where('role', $request->get('role'));
         }
 
-        $users = $query->withCount(['vehicles', 'repairs', 'maintenances'])
-                      ->orderBy('created_at', 'desc')
-                      ->paginate(15);
+        // MODIFICATION: Charger les véhicules avec leur propriétaire
+    $users = $query->with([
+            'vehicules' => function($query) {
+                $query->select('id', 'user_id', 'proprietaire_id', 'make', 'model', 'alias', 'license_plate', 'status', 'year')
+                      ->with('proprietaire:id,nom,prenom,raison_sociale,type')
+                      ->orderBy('created_at', 'desc');
+            }
+        ])
+        ->withCount(['vehicules', 'maintenances'])
+        ->orderBy('created_at', 'desc')
+        ->paginate(15);
 
         return Inertia::render('Admin/Users/Index', [
             'users' => $users,

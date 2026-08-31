@@ -9,9 +9,10 @@ use App\Models\Assurance;
 use App\Models\Reparation;
 use App\Models\Maintenance;
 use App\Models\Trajet;
-use App\Models\Recu;
+use App\Models\FuelPrice;
 use App\Models\Proprietaire;
 use App\Models\Ravitaillement;
+use App\Models\VisiteTechnique;
 // Policies
 use App\Policies\VehiculePolicy;
 use App\Policies\AssurancePolicy;
@@ -19,8 +20,9 @@ use App\Policies\ReparationPolicy;
 use App\Policies\MaintenancePolicy;
 use App\Policies\RavitaillementPolicy;
 use App\Policies\TrajetPolicy;
-use App\Policies\RecuPolicy;
+use App\Policies\FuelPricePolicy;
 use App\Policies\ProprietairePolicy;
+use App\Policies\VisiteTechniquePolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -31,11 +33,12 @@ class AuthServiceProvider extends ServiceProvider
        Vehicule::class      => VehiculePolicy::class,
         Assurance::class    => AssurancePolicy::class,
        /* Reparation::class   => ReparationPolicy::class,
-        Maintenance::class  => MaintenancePolicy::class,
+        Maintenance::class  => MaintenancePolicy::class,*/
         Ravitaillement::class    => RavitaillementPolicy::class,
         Trajet::class       => TrajetPolicy::class,
-        Recu::class         => RecuPolicy::class,
-        Proprietaire::class => ProprietairePolicy::class,*/
+        VisiteTechnique::class  => VisiteTechniquePolicy::class,
+        FuelPrice::class => FuelPricePolicy::class,
+        Proprietaire::class => ProprietairePolicy::class,
 
     ];
 

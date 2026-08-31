@@ -15,13 +15,24 @@ return new class extends Migration
             $table->id();
             $table->foreignId('vehicule_id')->constrained()->onDelete('cascade');
             $table->foreignId('user_id')->constrained()->onDelete('cascade');
+            $table->string('chauffeur_name')->nullable();
             $table->date('ravitaillement_date');
-            $table->string('station_name');
-            $table->decimal('liters', 8, 2);
-            $table->decimal('price_per_liter', 6, 3);
+            $table->string('station_service');
+            $table->decimal('liters_purchased', 10, 2);
+            $table->decimal('price_per_liter', 10, 2);
+            $table->decimal('amount_paid', 10, 2);
+            $table->decimal('total_liters', 10, 2);
             $table->decimal('total_cost', 10, 2);
-            $table->integer('mileage');
+            $table->decimal('odo_station', 10, 2)->nullable();
+            $table->string('fuel_type');
+            $table->enum('payment_method', ['carte', 'cash', 'virement', 'mobile'])->default('cash');
+            $table->string('receipt_number')->nullable();
+            $table->text('notes')->nullable();
+            $table->boolean('is_custom_price')->default(false);
             $table->timestamps();
+
+            $table->index(['vehicule_id', 'ravitaillement_date']);
+            $table->index('user_id');
         });
     }
 

@@ -13,8 +13,10 @@ class Vehicule extends Model
 
      protected $fillable = [
         'user_id',
+        'proprietaire_id',
         'make',
         'model',
+        'alias',
         'vehicule_type',
         'year',
         'license_plate',
@@ -24,21 +26,45 @@ class Vehicule extends Model
         'mileage',
         'status',
         'validation_notes',
+        'average_consumption',
         'validated_by',
         'validated_at',
+
+        'categorie',
+        'numero_serie_type',
+        'carrosserie',
+        'numero_moteur',
+        'cylindree',
+        'puissance_administrative',
+        'places_assises',
+        'poids_total_charge',
+        'poids_vide',
+        'charge_utile',
     ];
 
     protected $casts = [
         'status' => VehiculeStatus::class,
         'validated_at' => 'datetime',
-        'year' => 'integer',
+        'year' => 'date:Y-m-d',
         'mileage' => 'integer',
+        'average_consumption' => 'decimal:2',
+        'cylindree' => 'integer',
+        'puissance_administrative' => 'integer',
+        'places_assises' => 'integer',
+        'poids_total_charge' => 'decimal:2',
+        'poids_vide' => 'decimal:2',
+        'charge_utile' => 'decimal:2',
     ];
 
         // Relations
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function proprietaire()
+    {
+        return $this->belongsTo(Proprietaire::class);
     }
 
     public function validator()
@@ -49,11 +75,6 @@ class Vehicule extends Model
     public function assurances()
     {
         return $this->hasMany(Assurance::class);
-    }
-
-    public function reparations()
-    {
-        return $this->hasMany(Reparation::class);
     }
 
     public function maintenances()
@@ -70,6 +91,10 @@ class Vehicule extends Model
     {
         return $this->hasMany(Trajet::class);
     }
+    public function visiteTechniques()
+{
+    return $this->hasMany(VisiteTechnique::class);
+}
 
     // Méthodes utilitaires
     public function isPending(): bool
@@ -173,5 +198,76 @@ class Vehicule extends Model
     public function isGpl(): bool
     {
         return $this->fuel_type === 'gpl';
+    }
+    // Méthode utilitaire pour vérifier la validité de la visite technique
+    public function hasValidVisiteTechnique(): bool
+    {
+        return $this->visiteTechniques()
+            ->where('aptitude', 'APTE')
+            ->where('validite', '>=', now())
+            ->exists();
+    }
+
+    public function getLatestVisiteTechnique()
+    {
+        return $this->visiteTechniques()
+            ->orderBy('date_visite', 'desc')
+            ->first();
+    }
+
+    // Méthode pour calculer automatiquement la charge utile
+    public function calculateChargeUtile(): ?float
+    {
+        if ($this->poids_total_charge && $this->poids_vide) {
+            return $this->poids_total_charge - $this->poids_vide;
+        }
+        return null;
+    }
+
+    /**
+     * Calculer et mettre à jour la consommation moyenne basée sur les ravitaillements
+     */
+    public function updateAverageConsumption(): void
+    {
+        $ravitaillements = $this->ravitaillements()
+            ->whereNotNull('odo_station')
+            ->orderBy('ravitaillement_date', 'asc')
+            ->get();
+
+        if ($ravitaillements->count() < 2) {
+            // Pas assez de données pour calculer
+            return;
+        }
+
+        $totalLiters = 0;
+        $totalDistance = 0;
+
+        for ($i = 1; $i < $ravitaillements->count(); $i++) {
+            $previous = $ravitaillements[$i - 1];
+            $current = $ravitaillements[$i];
+
+            $distance = $current->odo_station - $previous->odo_station;
+
+            // Ignorer les valeurs aberrantes
+            if ($distance > 0 && $distance < 2000) { // Distance max entre 2 ravitaillements : 2000 km
+                $totalDistance += $distance;
+                $totalLiters += $current->liters_purchased;
+            }
+        }
+
+        if ($totalDistance > 0) {
+            // Calcul : (litres / distance) * 100
+            $averageConsumption = ($totalLiters / $totalDistance) * 100;
+            
+            $this->update([
+                'average_consumption' => round($averageConsumption, 2)
+            ]);
+        }
+    }
+
+    // Ajoutez également cette méthode helper
+    public function getConsumptionRate(): ?float
+    {
+        return $this->average_consumption ? (float) $this->average_consumption : null;
     }
 }
