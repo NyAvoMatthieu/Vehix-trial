@@ -9,9 +9,17 @@ import TextInput from '@/Components/TextInput.vue';
 
 const props = defineProps({
     maintenance: Object,
+    // ⭐ NOUVEAU — Partie 4 : catalogue des types d'intervention (actifs)
+    interventionTypes: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const form = useForm({
+    // ⭐ NOUVEAU — Partie 4 : optionnel, rattache cette maintenance à un type du catalogue
+    intervention_type_id: props.maintenance?.intervention_type_id || null,
+    nouveau_type_nom: '',
     nature_intervention: props.maintenance?.nature_intervention || '',
     kilometrage_actuel: props.maintenance?.kilometrage_actuel || 0,
     date_debut: props.maintenance?.date_debut || new Date().toISOString().split('T')[0],
@@ -88,14 +96,24 @@ const coutTotal = computed(() => {
     return (mainOeuvre + pieces).toFixed(2);
 });
 
+const OTHER = 'other';
+
 const submit = () => {
-    form.put(route('maintenances.update', props.maintenance.id), {
-        preserveScroll: true,
-        onError: (errors) => {
-            console.error('Erreurs de validation:', errors);
-        }
-    });
+    form.transform((d) =>
+        d.intervention_type_id === OTHER
+            ? { ...d, intervention_type_id: null }
+            : { ...d, nouveau_type_nom: '' }
+    ).post(route('maintenances.store'), { preserveScroll: true });
 };
+
+// const submit = () => {
+//     form.put(route('maintenances.update', props.maintenance.id), {
+//         preserveScroll: true,
+//         onError: (errors) => {
+//             console.error('Erreurs de validation:', errors);
+//         }
+//     });
+// };
 </script>
 
 <template>
@@ -154,6 +172,34 @@ const submit = () => {
                                     />
                                     <InputError :message="form.errors.nature_intervention" class="mt-2" />
                                 </div>
+                            </div>
+
+                            <!-- ⭐ NOUVEAU — Partie 4 : type d'intervention du catalogue -->
+                            <div class="mt-6">
+                                <InputLabel for="intervention_type_id" value="Type d'intervention (catalogue)" />
+                                <select
+                                    id="intervention_type_id"
+                                    v-model="form.intervention_type_id"
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                >
+                                    <option :value="null">— Aucun (hors catalogue) —</option>
+                                    <option v-for="type in interventionTypes" :key="type.id" :value="type.id">
+                                        {{ type.nom }}
+                                    </option>
+                                    <option :value="OTHER">Autre ...</option>
+                                </select>
+                                <p class="text-xs text-gray-500 mt-1">
+                                    Si renseigné, le suivi de maintenance préventive du véhicule sera mis à jour automatiquement à la validation.
+                                </p>
+                                <InputError :message="form.errors.intervention_type_id" class="mt-2" />
+                            </div>
+
+                            <!-- Nouveau catalogue -->
+                            <div v-if="form.intervention_type_id === OTHER" class="mt-3">
+                                <InputLabel for="nouveau_type_nom" value="Nom du nouveau type *" />
+                                <TextInput id="nouveau_type_nom" v-model="form.nouveau_type_nom" type="text"
+                                        class="mt-1 block w-full" required placeholder="Ex: Révision des freins" />
+                                <InputError :message="form.errors.nouveau_type_nom" class="mt-2" />
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">

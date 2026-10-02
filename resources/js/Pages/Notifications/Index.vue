@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
 import {
@@ -8,7 +8,9 @@ import {
   ExclamationTriangleIcon,
   InformationCircleIcon,
   TrashIcon,
-  CheckIcon
+  CheckIcon,
+  ShieldExclamationIcon,
+  ClipboardDocumentCheckIcon
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -17,6 +19,16 @@ const props = defineProps({
 })
 
 const filter = ref('all') // all, unread, read
+
+const filteredNotifications = computed(() => {
+  if (filter.value === 'unread') {
+    return props.notifications.data.filter((n) => !n.read_at)
+  }
+  if (filter.value === 'read') {
+    return props.notifications.data.filter((n) => n.read_at)
+  }
+  return props.notifications.data
+})
 
 const markAsRead = async (notificationId) => {
   try {
@@ -65,17 +77,31 @@ const handleNotificationClick = (notification) => {
   }
 }
 
+const ECHEANCE_TYPES = ['assurance_echeance', 'visite_technique_echeance']
+
 const getNotificationIcon = (type) => {
   const icons = {
     'vehicle_validation': CheckCircleIcon,
     'new_vehicle': InformationCircleIcon,
     'new_user': InformationCircleIcon,
     'custom_fuel_price': ExclamationTriangleIcon,
+    'assurance_echeance': ShieldExclamationIcon,
+    'visite_technique_echeance': ClipboardDocumentCheckIcon,
   }
   return icons[type] || BellIcon
 }
 
-const getNotificationColor = (type) => {
+// Pour les échéances, la couleur dépend du niveau (approche = orange, dépassée = rouge)
+// plutôt que du seul type.
+const getNotificationColor = (notification) => {
+  const type = notification.data.type
+
+  if (ECHEANCE_TYPES.includes(type)) {
+    return notification.data.niveau === 'expired'
+      ? 'text-red-600 bg-red-100'
+      : 'text-orange-600 bg-orange-100'
+  }
+
   const colors = {
     'vehicle_validation': 'text-green-600 bg-green-100',
     'new_vehicle': 'text-blue-600 bg-blue-100',
@@ -113,7 +139,7 @@ const formatDate = (dateString) => {
           <!-- Filter -->
           <select
             v-model="filter"
-            class="border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
+            class="w-25 h-10 -border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm"
           >
             <option value="all">Toutes</option>
             <option value="unread">Non lues</option>
@@ -192,19 +218,19 @@ const formatDate = (dateString) => {
 
         <!-- Notifications List -->
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-          <div v-if="notifications.data.length === 0" class="p-12 text-center">
+          <div v-if="filteredNotifications.length === 0" class="p-12 text-center">
             <BellIcon class="h-16 w-16 text-gray-300 mx-auto mb-4" />
             <h3 class="text-lg font-semibold text-gray-900 mb-2">
-              Aucune notification
+              {{ filter === 'all' ? 'Aucune notification' : 'Aucune notification dans ce filtre' }}
             </h3>
             <p class="text-gray-600">
-              Vous n'avez pas encore de notifications.
+              {{ filter === 'all' ? "Vous n'avez pas encore de notifications." : 'Essayez un autre filtre.' }}
             </p>
           </div>
 
           <div v-else class="divide-y divide-gray-200">
             <div
-              v-for="notification in notifications.data"
+              v-for="notification in filteredNotifications"
               :key="notification.id"
               :class="[
                 'p-6 hover:bg-gray-50 transition-colors cursor-pointer',
@@ -217,7 +243,7 @@ const formatDate = (dateString) => {
                 <div
                   :class="[
                     'flex-shrink-0 h-12 w-12 rounded-full flex items-center justify-center',
-                    getNotificationColor(notification.data.type)
+                    getNotificationColor(notification)
                   ]"
                 >
                   <component
@@ -269,6 +295,40 @@ const formatDate = (dateString) => {
                         </div>
                       </div>
 
+                      <div
+                        v-if="notification.data.type === 'assurance_echeance'"
+                        :class="[
+                          'w-150 border rounded-lg p-3 mb-3',
+                          notification.data.niveau === 'expired'
+                            ? 'bg-red-50 border-red-200'
+                            : 'bg-orange-50 border-orange-200'
+                        ]"
+                      >
+                        <div class="flex items-center text-xs">
+                          <span class="text-gray-600">Date d'échéance :</span>
+                          <span class="font-semibold">
+                            {{ notification.data.end_date ? formatDate(notification.data.end_date) : '—' }}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div
+                        v-if="notification.data.type === 'visite_technique_echeance'"
+                        :class="[
+                          'w-150 border rounded-lg p-3 mb-3',
+                          notification.data.niveau === 'expired'
+                            ? 'bg-red-50 border-red-200'
+                            : 'bg-orange-50 border-orange-200'
+                        ]"
+                      >
+                        <div class="flex items-center text-xs">
+                          <span class="text-gray-600">Date de validité :</span>
+                          <span class="font-semibold">
+                            {{ notification.data.validite ? formatDate(notification.data.validite) : '—' }}
+                          </span>
+                        </div>
+                      </div>
+
                       <div class="flex items-center justify-between">
                         <span class="text-xs text-gray-500">
                           {{ formatDate(notification.created_at) }}
@@ -312,19 +372,27 @@ const formatDate = (dateString) => {
               </div>
 
               <div class="flex gap-2">
-                <Link
-                  v-for="link in notifications.links"
-                  :key="link.label"
-                  :href="link.url"
-                  :class="[
-                    'px-3 py-2 text-sm rounded-md',
-                    link.active
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white text-gray-700 hover:bg-gray-50',
-                    !link.url ? 'opacity-50 cursor-not-allowed' : ''
-                  ]"
-                  v-html="link.label"
-                ></Link>
+                <template v-for="link in notifications.links" :key="link.label">
+                  <span
+                    v-if="!link.url"
+                    :class="[
+                      'px-3 py-2 text-sm rounded-md opacity-50 cursor-not-allowed',
+                      'bg-white text-gray-400'
+                    ]"
+                    v-html="link.label"
+                  ></span>
+                  <Link
+                    v-else
+                    :href="link.url"
+                    :class="[
+                      'px-3 py-2 text-sm rounded-md',
+                      link.active
+                        ? 'bg-indigo-600 text-white'
+                        : 'bg-white text-gray-700 hover:bg-gray-50'
+                    ]"
+                    v-html="link.label"
+                  ></Link>
+                </template>
               </div>
             </div>
           </div>

@@ -21,6 +21,10 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\RapportController;
 use App\Http\Controllers\ConsumptionAnalysisController;
 use App\Http\Controllers\Auth\ProprietairePasswordRecoveryController;
+use App\Http\Controllers\PositionShareController;
+use App\Http\Controllers\AlertSettingController;
+use App\Http\Controllers\VehiculeMaintenanceController;
+use App\Http\Controllers\Admin\MaintenanceInterventionTypeController;
 
 
 
@@ -41,34 +45,34 @@ Route::get('/cgu', function () {
 
 
 
-    Route::middleware('guest')->group(function () {
+Route::middleware('guest')->group(function () {
 
-        // Étape 1 : Formulaire de saisie de l'email
-        Route::get('/password/recovery', [ProprietairePasswordRecoveryController::class, 'showEmailForm'])
-            ->name('password.recovery.email');
+    // Étape 1 : Formulaire de saisie de l'email
+    Route::get('/password/recovery', [ProprietairePasswordRecoveryController::class, 'showEmailForm'])
+        ->name('password.recovery.email');
 
-        // Étape 2 : Vérification de l'email et génération des questions
-        Route::post('/password/recovery/verify-email', [ProprietairePasswordRecoveryController::class, 'verifyEmail'])
-            ->name('password.recovery.verify-email');
+    // Étape 2 : Vérification de l'email et génération des questions
+    Route::post('/password/recovery/verify-email', [ProprietairePasswordRecoveryController::class, 'verifyEmail'])
+        ->name('password.recovery.verify-email');
 
-        // Étape 3 : Affichage des questions de vérification
-        Route::get('/password/recovery/questions/{token}', [ProprietairePasswordRecoveryController::class, 'showQuestionsForm'])
-            ->name('password.recovery.questions');
+    // Étape 3 : Affichage des questions de vérification
+    Route::get('/password/recovery/questions/{token}', [ProprietairePasswordRecoveryController::class, 'showQuestionsForm'])
+        ->name('password.recovery.questions');
 
-        // Étape 4 : Vérification des réponses
-        Route::post('/password/recovery/verify-answers/{token}', [ProprietairePasswordRecoveryController::class, 'verifyAnswers'])
-            ->name('password.recovery.verify-answers');
+    // Étape 4 : Vérification des réponses
+    Route::post('/password/recovery/verify-answers/{token}', [ProprietairePasswordRecoveryController::class, 'verifyAnswers'])
+        ->name('password.recovery.verify-answers');
 
-        // Étape 5 : Formulaire de réinitialisation du mot de passe
-        Route::get('/password/recovery/reset/{token}', [ProprietairePasswordRecoveryController::class, 'showResetForm'])
-            ->name('password.recovery.reset');
+    // Étape 5 : Formulaire de réinitialisation du mot de passe
+    Route::get('/password/recovery/reset/{token}', [ProprietairePasswordRecoveryController::class, 'showResetForm'])
+        ->name('password.recovery.reset');
 
-        // Étape 6 : Enregistrement du nouveau mot de passe
-        Route::post('/password/recovery/reset/{token}', [ProprietairePasswordRecoveryController::class, 'resetPassword'])
-            ->name('password.recovery.reset-password');
-    });
+    // Étape 6 : Enregistrement du nouveau mot de passe
+    Route::post('/password/recovery/reset/{token}', [ProprietairePasswordRecoveryController::class, 'resetPassword'])
+        ->name('password.recovery.reset-password');
+});
 
-    
+
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
@@ -80,8 +84,9 @@ Route::middleware([
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     Route::get('/rapports', [RapportController::class, 'index'])->name('rapports.index');
+    Route::get('/rapports/export', [RapportController::class, 'export'])->name('rapports.export');
 
-     // Analyse de consommation d'un véhicule
+    // Analyse de consommation d'un véhicule
     Route::get('/vehicules/{vehicule}/consumption', [ConsumptionAnalysisController::class, 'show'])
         ->name('vehicules.consumption');
 
@@ -121,6 +126,11 @@ Route::middleware([
         Route::resource('trajets', TrajetController::class);
         Route::resource('visite-techniques', VisiteTechniqueController::class);
 
+        // Dashboard vehicule
+        Route::get('/vehicules-maintenance', [VehiculeMaintenanceController::class, 'index'])
+            ->name('vehicules.maintenance.index');
+        Route::get('/vehicules/{vehicule}/maintenance', [VehiculeMaintenanceController::class, 'show'])
+            ->name('vehicules.maintenance.show');
     });
 
     // Routes de validation
@@ -131,7 +141,7 @@ Route::middleware([
             Route::get('/pending', [VehiculeController::class, 'pending'])->name('pending');
             Route::post('/vehicules/{vehicule}/validate', [VehiculeController::class, 'validateVehicule'])
                 ->name('vehicules.validate');
-            Route::post('/maintenances/{maintenance}/validate', [MaintenanceController::class, 'validate'])
+            Route::post('/maintenances/{maintenance}/validate', [MaintenanceController::class, 'validateMaintenance'])
                 ->name('maintenances.validateMaintenance');
         });
 
@@ -145,7 +155,22 @@ Route::middleware([
             Route::delete('/users/{user}', [AdministrateurController::class, 'deleteUser'])->name('users.delete');
             Route::post('/users/{user}/block', [AdministrateurController::class, 'blockUser'])->name('users.block');
             Route::post('/users/{user}/unblock', [AdministrateurController::class, 'unblockUser'])->name('users.unblock');
+            Route::get('/alert-settings', [AlertSettingController::class, 'index']) // routes d'alertes
+                ->name('alert-settings.index');
+            Route::put('/alert-settings', [AlertSettingController::class, 'update'])
+                ->name('alert-settings.update');
+
+            // Maintenance
+            Route::get('/maintenance-types', [MaintenanceInterventionTypeController::class, 'index'])
+                ->name('maintenance-types.index');
+            Route::post('/maintenance-types', [MaintenanceInterventionTypeController::class, 'store'])
+                ->name('maintenance-types.store');
+            Route::put('/maintenance-types/{maintenanceInterventionType}', [MaintenanceInterventionTypeController::class, 'update'])
+                ->name('maintenance-types.update');
+            Route::delete('/maintenance-types/{maintenanceInterventionType}', [MaintenanceInterventionTypeController::class, 'destroy'])
+                ->name('maintenance-types.destroy');
         });
+
 
     // Fuel Prices Management
     Route::middleware(['auth', 'role:administrateur,validator'])->group(function () {
@@ -158,25 +183,23 @@ Route::middleware([
             Route::delete('/{fuelPrice}', [FuelPriceController::class, 'destroy'])->name('destroy');
             Route::post('/{fuelPrice}/toggle-active', [FuelPriceController::class, 'toggleActive'])->name('toggle-active');
         });
+        Route::prefix('administrateur/alert-settings')->name('admin.alert-settings.')->group(function () {
+            Route::get('/', [AlertSettingController::class, 'index'])->name('index');
+        });
     });
 
     // Routes des notifications
     Route::middleware(['auth'])->group(function () {
         Route::get('/notifications', [NotificationController::class, 'index'])
             ->name('notifications.index');
-
         Route::get('/api/notifications', [NotificationController::class, 'getNotifications'])
             ->name('api.notifications.get');
-
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
             ->name('notifications.read');
-
         Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])
             ->name('notifications.mark-all-read');
-
         Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])
             ->name('notifications.destroy');
-
         Route::delete('/notifications', [NotificationController::class, 'deleteAll'])
             ->name('notifications.delete-all');
     });
@@ -186,6 +209,10 @@ Route::middleware([
         return Broadcast::auth($request);
     })->middleware(['auth']);
 
+    // Route de partage de position
+    Route::post('/trajets/position-share', [PositionShareController::class, 'create'])
+        ->name('position-share.create');
+
     /* Admin Marques routes
     Route::middleware(['auth', 'role:administrateur'])->prefix('admin')->name('admin.')->group(function () {
         Route::get('/marques', [MarqueController::class, 'index'])->name('marques.index');
@@ -193,6 +220,13 @@ Route::middleware([
         Route::post('/marques', [MarqueController::class, 'storeAdmin'])->name('marques.store');
         Route::delete('/marques/{marque}', [MarqueController::class, 'destroy'])->name('marques.destroy');
     });*/
+});
 
-
+Route::middleware('throttle:60,1')->group(function () {
+    Route::get('/partage-position/{token}', [PositionShareController::class, 'show'])
+        ->name('position-share.show');
+    Route::post('/api/position-share/{token}', [PositionShareController::class, 'update'])
+        ->name('position-share.update');
+    Route::get('/api/position-share/{token}', [PositionShareController::class, 'poll'])
+        ->name('position-share.poll');
 });

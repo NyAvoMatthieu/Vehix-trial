@@ -65,7 +65,7 @@
               >
                 <option value="all">Tous les rôles</option>
                 <option v-for="role in roles" :key="role.value" :value="role.value">
-                  {{ role.label }}
+                  {{ role.value }}
                 </option>
               </select>
             </div>
@@ -702,4 +702,6 @@ const getProprietaireDisplay = (proprietaire) => {
 const getFilteredCount = (role) => {
   return props.users.data.filter(user => user.role === role).length
 }
+
+// console.log(roles)
 </script>

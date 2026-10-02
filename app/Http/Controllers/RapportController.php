@@ -9,8 +9,10 @@ use App\Models\Maintenance;
 use App\Models\Assurance;
 use App\Models\VisiteTechnique;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class RapportController extends Controller
 {
@@ -18,6 +20,63 @@ class RapportController extends Controller
      * Afficher l'historique complet des activités
      */
     public function index(Request $request)
+    {
+        $report = $this->buildReport($request);
+
+        // Pagination manuelle
+        $perPage = 20;
+        $currentPage = $request->input('page', 1);
+        $activities = $report['activities'];
+        $total = $activities->count();
+        $items = $activities->slice(($currentPage - 1) * $perPage, $perPage)->values();
+
+        $paginatedActivities = new \Illuminate\Pagination\LengthAwarePaginator(
+            $items,
+            $total,
+            $perPage,
+            $currentPage,
+            ['path' => $request->url(), 'query' => $request->query()]
+        );
+
+        return Inertia::render('Rapports/Index', [
+            'activities' => $paginatedActivities,
+            'stats' => $report['stats'],
+            'filters' => $report['filters'],
+            'selectedVehicule' => $report['selectedVehicule'],
+        ]);
+    }
+
+    /**
+     * Exporter le rapport en PDF (toutes les activités correspondant aux filtres)
+     */
+    public function export(Request $request)
+    {
+        $report = $this->buildReport($request);
+
+        // Logo en base64 (dompdf n'a pas besoin d'accès réseau)
+        $logoPath = public_path('images/vehix-logo.png');
+        $logo = file_exists($logoPath)
+            ? 'data:image/png;base64,' . base64_encode(file_get_contents($logoPath))
+            : null;
+
+        $pdf = Pdf::loadView('rapports.pdf', [
+            'activities' => $report['activities'],
+            'stats' => $report['stats'],
+            'filters' => $report['filters'],
+            'selectedVehicule' => $report['selectedVehicule'],
+            'user' => $request->user(),
+            'logo' => $logo,
+            'generatedAt' => now(),
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->download('rapport-activites-' . now()->format('Y-m-d') . '.pdf');
+    }
+
+    /**
+     * Construit les activités, statistiques et filtres.
+     * Partagé entre l'affichage (index) et l'export PDF.
+     */
+    private function buildReport(Request $request): array
     {
         $user = $request->user();
         $selectedVehiculeId = session('selected_vehicule_id');
@@ -30,7 +89,7 @@ class RapportController extends Controller
         $startDate = $request->input('start_date', $defaultStartDate);
         $endDate = $request->input('end_date', $defaultEndDate);
         $activityType = $request->input('activity_type', 'all');
-        $searchTerm = $request->input('search', '');
+        $searchTerm = $request->input('search', '') ?? '';
 
         // Convertir en Carbon pour les comparaisons
         $startCarbon = Carbon::parse($startDate)->startOfDay();
@@ -40,7 +99,7 @@ class RapportController extends Controller
         $activities = collect();
 
         // Base query - filtrer par véhicule sélectionné ou tous les véhicules de l'utilisateur
-        $baseQuery = function($query) use ($user, $selectedVehiculeId) {
+        $baseQuery = function ($query) use ($user, $selectedVehiculeId) {
             $query->where('user_id', $user->id);
             if ($selectedVehiculeId) {
                 $query->where('vehicule_id', $selectedVehiculeId);
@@ -110,23 +169,21 @@ class RapportController extends Controller
                 ->get();
 
             foreach ($maintenances as $maintenance) {
-
-            //  le coût total en temps réel
+                // Le coût total en temps réel
                 $coutMainOeuvre = $maintenance->cout_main_oeuvre ?? 0;
                 $coutPieces = $maintenance->pieces->sum('prix_total') ?? 0;
                 $coutTotal = $coutMainOeuvre + $coutPieces;
 
-                 //  Compter le nombre de pièces
+                // Nombre de pièces
                 $nombrePieces = $maintenance->pieces->count();
 
-                //  description détaillée des pièces
+                // Description détaillée des pièces
                 $detailsPieces = [];
                 if ($nombrePieces > 0) {
                     foreach ($maintenance->pieces as $index => $piece) {
                         $detailsPieces["Pièce " . ($index + 1)] = "{$piece->nom_piece} ({$piece->marque_piece}) - " . number_format($piece->prix_total, 0) . ' Ar';
                     }
                 }
-
 
                 $activities->push([
                     'id' => $maintenance->id,
@@ -137,7 +194,7 @@ class RapportController extends Controller
                     'vehicule' => $maintenance->vehicule->full_name,
                     'license_plate' => $maintenance->vehicule->license_plate,
                     'amount' => $coutTotal,
-                     'details' => array_merge([
+                    'details' => array_merge([
                         'Référence' => $maintenance->reference,
                         'Nature' => $maintenance->nature_intervention,
                         'Garage' => $maintenance->garage_nom,
@@ -145,18 +202,17 @@ class RapportController extends Controller
                         'Pièces (Total)' => number_format($coutPieces, 0) . ' Ar',
                         'Nombre de pièces' => $nombrePieces,
                         '💰 TOTAL' => number_format($coutTotal, 0) . ' Ar',
-                    ], $detailsPieces), //  les détails des pièces
+                    ], $detailsPieces),
                 ]);
             }
         }
-        // 4. ASSURANCES - Version simplifiée
+
+        // 4. ASSURANCES
         if ($activityType === 'all' || $activityType === 'assurances') {
             $assurances = Assurance::with(['vehicule'])
                 ->where($baseQuery)
-                ->where(function($query) use ($startCarbon, $endCarbon) {
-                    // Afficher les assurances créées pendant la période
+                ->where(function ($query) use ($startCarbon, $endCarbon) {
                     $query->whereBetween('created_at', [$startCarbon, $endCarbon])
-                        // OU celles qui commencent pendant la période
                         ->orWhereBetween('start_date', [$startCarbon, $endCarbon]);
                 })
                 ->get();
@@ -212,19 +268,19 @@ class RapportController extends Controller
 
         // Filtrer par recherche si nécessaire
         if (!empty($searchTerm)) {
-            $activities = $activities->filter(function($activity) use ($searchTerm) {
+            $activities = $activities->filter(function ($activity) use ($searchTerm) {
                 $searchLower = strtolower($searchTerm);
                 return str_contains(strtolower($activity['title']), $searchLower) ||
-                       str_contains(strtolower($activity['description']), $searchLower) ||
-                       str_contains(strtolower($activity['vehicule']), $searchLower) ||
-                       str_contains(strtolower($activity['license_plate']), $searchLower);
+                    str_contains(strtolower($activity['description']), $searchLower) ||
+                    str_contains(strtolower($activity['vehicule']), $searchLower) ||
+                    str_contains(strtolower($activity['license_plate']), $searchLower);
             });
         }
 
         // Trier par date décroissante
         $activities = $activities->sortByDesc('date')->values();
 
-        // Calcule des statistiques
+        // Statistiques
         $stats = [
             'total_activities' => $activities->count(),
             'total_amount' => $activities->whereNotNull('amount')->sum('amount'),
@@ -244,22 +300,8 @@ class RapportController extends Controller
             ],
         ];
 
-        // Pagination manuelle
-        $perPage = 20;
-        $currentPage = $request->input('page', 1);
-        $total = $activities->count();
-        $items = $activities->slice(($currentPage - 1) * $perPage, $perPage)->values();
-
-        $paginatedActivities = new \Illuminate\Pagination\LengthAwarePaginator(
-            $items,
-            $total,
-            $perPage,
-            $currentPage,
-            ['path' => $request->url(), 'query' => $request->query()]
-        );
-
-        return Inertia::render('Rapports/Index', [
-            'activities' => $paginatedActivities,
+        return [
+            'activities' => $activities,
             'stats' => $stats,
             'filters' => [
                 'start_date' => $startDate,
@@ -268,15 +310,6 @@ class RapportController extends Controller
                 'search' => $searchTerm,
             ],
             'selectedVehicule' => $selectedVehiculeId ? Vehicule::find($selectedVehiculeId) : null,
-        ]);
-    }
-
-    /**
-     * Exporter les rapports en PDF ou Excel
-     */
-    public function export(Request $request)
-    {
-        // À implémenter plus tard si nécessaire
-        return response()->json(['message' => 'Export feature coming soon']);
+        ];
     }
 }

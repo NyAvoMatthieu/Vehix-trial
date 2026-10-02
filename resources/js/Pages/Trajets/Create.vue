@@ -5,15 +5,20 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
+import TrajetMap from '@/Components/TrajetMap.vue';
 
 const props = defineProps({
     vehicule: Object,
     lastKnownOdo: Number,
+    lastKnownDestination:String // ajout dernier destination
 });
+
+const saisieMode = ref('manuel'); // 'manuel' | 'geolocalisation'
 
 const form = useForm({
     vehicule_id: props.vehicule.id,
-    departure: '',
+    // departure: '',
+    departure:props.lastKnownDestination || '(Not Found)',
     destination: '',
     heure_depart: '',
     heure_arrivee: '',
@@ -24,7 +29,42 @@ const form = useForm({
     odo_start: props.lastKnownOdo || 0,
     odo_end: '',
     notes: '',
+    mode_saisie: 'manuel',
+    depart_latitude: null,
+    depart_longitude: null,
+    arrivee_latitude: null,
+    arrivee_longitude: null,
 });
+
+// Bascule entre les 2 modes de saisie (Mode 1 manuel / Mode 2 géolocalisation)
+watch(saisieMode, (mode) => {
+    form.mode_saisie = mode;
+
+    if (mode === 'geolocalisation') {
+        // Le calcul de distance/odomètre passe par la logique "trajet" déjà en place
+        form.kilometrage_mode = 'trajet';
+        form.km_depart = 0;
+    } else {
+        form.kilometrage_mode = 'odometer';
+        form.odo_start = props.lastKnownOdo || 0;
+    }
+});
+
+const onDepartUpdate = ({ lat, lng, label }) => {
+    form.depart_latitude = lat;
+    form.depart_longitude = lng;
+    if (label) form.departure = label;
+};
+
+const onArriveeUpdate = ({ lat, lng, label }) => {
+    form.arrivee_latitude = lat;
+    form.arrivee_longitude = lng;
+    if (label) form.destination = label;
+};
+
+const onDistanceUpdate = (distanceKm) => {
+    form.km_arrivee = distanceKm;
+};
 
 // Watch mode change
 watch(() => form.kilometrage_mode, (newMode) => {
@@ -124,8 +164,78 @@ const submit = () => {
                 </div>
 
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
+                    <!-- Onglets de mode de saisie -->
+                    <div class="flex border-b border-gray-200">
+                        <button
+                            type="button"
+                            @click="saisieMode = 'manuel'"
+                            :class="[
+                                'flex-1 px-6 py-4 text-sm font-semibold text-center border-b-2 transition-colors',
+                                saisieMode === 'manuel'
+                                    ? 'border-indigo-600 text-indigo-600 bg-indigo-50'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            ]"
+                        >
+                            ✍️ Saisie manuelle
+                        </button>
+                        <button
+                            type="button"
+                            @click="saisieMode = 'geolocalisation'"
+                            :class="[
+                                'flex-1 px-6 py-4 text-sm font-semibold text-center border-b-2 transition-colors',
+                                saisieMode === 'geolocalisation'
+                                    ? 'border-indigo-600 text-indigo-600 bg-indigo-50'
+                                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            ]"
+                        >
+                            🗺️ Saisie sur carte
+                        </button>
+                    </div>
+
                     <form @submit.prevent="submit" class="p-6">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- ============ MODE 2 : GÉOLOCALISATION ============ -->
+                        <div v-if="saisieMode === 'geolocalisation'">
+                            <TrajetMap
+                                :depart-lat="form.depart_latitude"
+                                :depart-lng="form.depart_longitude"
+                                :depart-label="form.departure"
+                                :arrivee-lat="form.arrivee_latitude"
+                                :arrivee-lng="form.arrivee_longitude"
+                                :arrivee-label="form.destination"
+                                @update:depart="onDepartUpdate"
+                                @update:arrivee="onArriveeUpdate"
+                                @update:distance="onDistanceUpdate"
+                            />
+                            <InputError :message="form.errors.depart_latitude" class="mt-2" />
+                            <InputError :message="form.errors.arrivee_latitude" class="mt-2" />
+
+                            <div v-if="form.km_arrivee" class="mt-4 p-4 bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg">
+                                <div class="flex items-center justify-between">
+                                    <span class="text-sm font-semibold text-gray-700 uppercase">Distance calculée (itinéraire)</span>
+                                    <span class="text-3xl font-bold text-green-600">{{ form.km_arrivee }} km</span>
+                                </div>
+                            </div>
+
+                            <!-- Horaires (communs aux 2 modes) -->
+                            <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                <h3 class="text-lg font-semibold text-gray-900 mb-4">Horaires du trajet</h3>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div>
+                                        <InputLabel for="heure_depart_geo" value="Date et heure de départ" />
+                                        <TextInput id="heure_depart_geo" v-model="form.heure_depart" type="datetime-local" class="mt-1 block w-full" />
+                                        <InputError :message="form.errors.heure_depart" class="mt-2" />
+                                    </div>
+                                    <div>
+                                        <InputLabel for="heure_arrivee_geo" value="Date et heure d'arrivée" />
+                                        <TextInput id="heure_arrivee_geo" v-model="form.heure_arrivee" type="datetime-local" class="mt-1 block w-full" />
+                                        <InputError :message="form.errors.heure_arrivee" class="mt-2" />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- ============ MODE 1 : SAISIE MANUELLE (existant) ============ -->
+                        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <!-- Lieu de départ -->
                             <div>
                                 <InputLabel for="departure" value="Lieu de départ" />
@@ -154,7 +264,7 @@ const submit = () => {
                         </div>
 
                         <!-- Section Horaires -->
-                        <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div v-if="saisieMode === 'manuel'" class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                             <h3 class="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                                 <svg class="w-5 h-5 mr-2 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -190,7 +300,7 @@ const submit = () => {
                         </div>
 
                         <!-- Mode de saisie kilométrage -->
-                        <div class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+                        <div v-if="saisieMode === 'manuel'" class="mt-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
                             <h3 class="text-lg font-semibold text-gray-900 mb-4">Mode de saisie du kilométrage</h3>
                             
                             <div class="space-y-3 mb-4">

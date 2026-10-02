@@ -62,7 +62,8 @@
                 <p class="text-lg font-mono font-semibold text-indigo-600">
                   {{ assurance.policy_number }}
                 </p>
-                <span :class="statusBadgeClass" class="mt-2 inline-flex px-3 py-1 text-sm font-semibold rounded-full">
+                <span :class="statusBadgeClass" class="mt-2 items-center inline-flex gap-1.5 px-3 py-1 text-sm font-semibold rounded-full">
+                <EcheancePulseDot :statut="assurance.statut_echeance" />
                   {{ statusText }}
                 </span>
               </div>
@@ -421,8 +422,8 @@
               </div>
               <div>
                 <p class="text-sm text-gray-500">Jours restants</p>
-                <p class="text-base font-semibold" :class="daysUntilExpiry < 0 ? 'text-red-600' : daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-green-600'">
-                  {{ daysUntilExpiry < 0 ? 'Expiré' : `${daysUntilExpiry} jours` }}
+                <p class="text-base font-semibold" :class="assurance.statut_echeance === 'expired' ? 'text-red-600' : assurance.statut_echeance === 'approaching' ? 'text-yellow-600' : 'text-green-600'">
+                  {{ daysUntilExpiry < 0 ? 'Expiré il y a '+true_diff+'j' : `${daysUntilExpiry} jours` }}
                 </p>
               </div>
             </div>
@@ -437,12 +438,12 @@
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import EcheancePulseDot from '@/Components/EcheancePulseDot.vue';
 import {
   ArrowLeftIcon,
   PencilIcon,
   ExclamationTriangleIcon,
-  XCircleIcon,
-  CheckCircleIcon
+  XCircleIcon
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
@@ -455,26 +456,27 @@ const durationDays = computed(() => {
   return Math.ceil((end - start) / (1000 * 60 * 60 * 24))
 })
 
-const daysUntilExpiry = computed(() => {
-  const now = new Date()
-  const endDate = new Date(props.assurance.end_date)
-  return Math.ceil((endDate - now) / (1000 * 60 * 60 * 24))
-})
+const daysUntilExpiry = computed(() => props.assurance.jours_restants)
+
+const diff = new Date() - new Date(props.assurance.end_date)
+const true_diff = Math.floor(diff / (1000 * 60 * 60 * 24))
 
 const statusText = computed(() => {
-  if (daysUntilExpiry.value < 0) return 'Expiré'
-  if (daysUntilExpiry.value <= 30) return `Expire dans ${daysUntilExpiry.value} jour(s)`
+  if (props.assurance.statut_echeance === 'expired') return true_diff === 0 ? 'Expire aujourd\'hui ' :'Expiré il y a ' +true_diff+'j'
+  if (props.assurance.statut_echeance === 'approaching') {
+    return `Expire dans ${daysUntilExpiry.value} jour(s)`
+  }
   return 'Actif'
 })
 
 const statusBadgeClass = computed(() => {
-  if (daysUntilExpiry.value < 0) return 'bg-red-100 text-red-800'
-  if (daysUntilExpiry.value <= 30) return 'bg-yellow-100 text-yellow-800'
+  if (props.assurance.statut_echeance === 'expired') return 'bg-red-100 text-red-800'
+  if (props.assurance.statut_echeance === 'approaching') return 'bg-yellow-100 text-yellow-800'
   return 'bg-green-100 text-green-800'
 })
 
 const expiryWarning = computed(() => {
-  if (daysUntilExpiry.value < 0) {
+  if (props.assurance.statut_echeance === 'expired') {
     return {
       class: 'bg-red-50 border border-red-200',
       icon: XCircleIcon,
@@ -485,7 +487,7 @@ const expiryWarning = computed(() => {
     }
   }
 
-  if (daysUntilExpiry.value <= 30) {
+  if (props.assurance.statut_echeance === 'approaching') {
     return {
       class: 'bg-yellow-50 border border-yellow-200',
       icon: ExclamationTriangleIcon,
@@ -493,17 +495,6 @@ const expiryWarning = computed(() => {
       textColor: 'text-yellow-800',
       title: '⏰ Renouvellement proche',
       message: `Votre contrat d'assurance expire dans ${daysUntilExpiry.value} jour(s). Pensez à le renouveler.`
-    }
-  }
-
-  if (daysUntilExpiry.value <= 60) {
-    return {
-      class: 'bg-blue-50 border border-blue-200',
-      icon: CheckCircleIcon,
-      iconColor: 'text-blue-400',
-      textColor: 'text-blue-800',
-      title: '✓ Contrat actif',
-      message: `Votre contrat est valide jusqu'au ${formatDate(props.assurance.end_date)}.`
     }
   }
 

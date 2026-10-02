@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\AlertType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
@@ -32,6 +33,16 @@ class Assurance extends Model
         'date_signature',
         'agent_nom',
         'notes_signature',
+        'last_alert_level',
+    ];
+
+    /**
+     * Champs calculés automatiquement inclus dans la sérialisation JSON
+     * (donc disponibles directement côté Vue sans requête supplémentaire).
+     */
+    protected $appends = [
+        'statut_echeance',
+        'jours_restants',
     ];
 
     protected $casts = [
@@ -81,6 +92,45 @@ class Assurance extends Model
             return 0;
         }
         return $this->start_date->diffInDays($this->end_date);
+    }
+
+    /**
+     * Nombre de jours restants avant l'échéance (négatif si déjà dépassée).
+     */
+    public function getJoursRestantsAttribute(): ?int
+    {
+        if (!$this->end_date) {
+            return null;
+        }
+
+        return (int) now()->startOfDay()->diffInDays($this->end_date->copy()->startOfDay(), false);
+    }
+
+    /**
+     * Statut d'échéance calculé en temps réel à partir du seuil configuré
+     * dans `alert_settings` : null (à jour), 'approaching' (bientôt expirée)
+     * ou 'expired' (expirée).
+     *
+     * NB : distinct de `last_alert_level`, qui ne reflète que le dernier
+     * niveau pour lequel une notification a été envoyée.
+     */
+    public function getStatutEcheanceAttribute(): ?string
+    {
+        if (!$this->end_date) {
+            return null;
+        }
+
+        if ($this->end_date->isPast()) {
+            return 'expired';
+        }
+
+        $seuil = AlertSetting::seuilPour(AlertType::ASSURANCE);
+
+        if ($this->end_date->lte(now()->addDays($seuil))) {
+            return 'approaching';
+        }
+
+        return null;
     }
 
     protected static function boot()

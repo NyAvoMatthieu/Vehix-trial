@@ -10,7 +10,7 @@
           type="text"
           v-model="searchValue"
           @input="updateSearch"
-          class="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+          class="block w-100 pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
           :placeholder="placeholder"
         />
       </div>
@@ -56,7 +56,7 @@ const searchValue = ref(props.search || '')
 const filterValues = reactive({...props.currentFilters})
 
 const updateSearch = debounce(() => {
-  router.get(route().current(), {
+  router.get(route(route().current()), {
     ...route().params,
     search: searchValue.value,
     ...filterValues
@@ -67,7 +67,7 @@ const updateSearch = debounce(() => {
 }, 300)
 
 const updateFilters = () => {
-  router.get(route().current(), {
+  router.get(route(route().current()), {
     ...route().params,
     search: searchValue.value,
     ...filterValues

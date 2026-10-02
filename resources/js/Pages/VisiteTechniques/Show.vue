@@ -318,12 +318,74 @@
                   </div>
                   <div v-if="daysUntilExpiry !== null" class="pt-3 border-t border-gray-200">
                     <p class="text-gray-500 font-medium mb-1">Jours restants</p>
-                    <p :class="daysUntilExpiry < 0 ? 'text-red-600' : daysUntilExpiry <= 30 ? 'text-yellow-600' : 'text-green-600'" 
+                    <p :class="visite.statut_echeance === 'expired' ? 'text-red-600' : visite.statut_echeance === 'approaching' ? 'text-yellow-600' : 'text-green-600'" 
                        class="font-bold text-xl">
-                      {{ daysUntilExpiry < 0 ? 'Expiré' : `${daysUntilExpiry} jours` }}
+                      {{ daysUntilExpiry < 0 ? 'Expiré il y a '+true_diff+'j' : `${daysUntilExpiry} jours` }}
                     </p>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <!-- 📅 Dates clés (2.3.1 du cahier des charges) -->
+            <div class="bg-white shadow-xl rounded-lg overflow-hidden">
+              <div class="px-6 py-4 bg-gray-50 border-b-2 border-gray-300">
+                <h3 class="text-base font-bold text-gray-900">Dates clés</h3>
+              </div>
+              <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <p class="text-xs text-gray-500 uppercase font-semibold">Dernière visite (véhicule)</p>
+                  <p class="text-base font-semibold text-gray-900">
+                    {{ derniereVisiteVehicule ? formatDate(derniereVisiteVehicule) : 'Aucune' }}
+                  </p>
+                </div>
+                <div>
+                  <p class="text-xs text-gray-500 uppercase font-semibold">
+                    Prochaine visite
+                    <span v-if="!visite.validite" class="text-orange-500 font-normal normal-case">(estimée)</span>
+                  </p>
+                  <p class="text-base font-semibold text-gray-900">
+                    {{ visite.prochaine_visite_estimee ? formatDate(visite.prochaine_visite_estimee) : 'Non calculable' }}
+                  </p>
+                  <p v-if="!visite.validite && !visite.prochaine_visite_estimee" class="text-xs text-gray-400 mt-1">
+                    Renseignez la périodicité dans les réglages d'alerte pour activer l'estimation.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- 🕓 Historique des visites du véhicule -->
+            <div v-if="historique && historique.length > 0" class="bg-white shadow-xl rounded-lg overflow-hidden">
+              <div class="px-6 py-4 bg-gray-50 border-b-2 border-gray-300">
+                <h3 class="text-base font-bold text-gray-900">
+                  Historique des visites de ce véhicule
+                </h3>
+              </div>
+              <div class="divide-y divide-gray-200">
+                <Link
+                  v-for="ancienne in historique"
+                  :key="ancienne.id"
+                  :href="route('visite-techniques.show', ancienne.id)"
+                  class="flex items-center justify-between px-6 py-3 hover:bg-gray-50 transition-colors"
+                >
+                  <div>
+                    <p class="text-sm font-medium text-gray-900">
+                      {{ formatDate(ancienne.date_visite) }}
+                      <span v-if="ancienne.numero_pv" class="text-gray-400 font-normal">
+                        — {{ ancienne.numero_pv }}
+                      </span>
+                    </p>
+                    <p class="text-xs text-gray-500">
+                      {{ ancienne.centre || 'Centre non renseigné' }}
+                    </p>
+                  </div>
+                  <span
+                    :class="ancienne.aptitude === 'APTE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                    class="px-2 py-1 text-xs font-semibold rounded-full"
+                  >
+                    {{ ancienne.aptitude === 'APTE' ? '🟢 APTE' : '🔴 INAPTE' }}
+                  </span>
+                </Link>
               </div>
             </div>
 
@@ -358,6 +420,7 @@
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/AppLayout.vue'
+import EcheancePulseDot from "@/Components/EcheancePulseDot.vue";
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -374,7 +437,9 @@ import {
 } from '@heroicons/vue/24/outline'
 
 const props = defineProps({
-  visite: Object
+  visite: Object,
+  historique: Array,
+  derniereVisiteVehicule: String
 })
 
 // Computed pour le nom du propriétaire
@@ -394,23 +459,21 @@ const proprietaireNom = computed(() => {
   return 'N/A'
 })
 
-const daysUntilExpiry = computed(() => {
-  if (!props.visite.validite) return null
-  const now = new Date()
-  const validite = new Date(props.visite.validite)
-  return Math.ceil((validite - now) / (1000 * 60 * 60 * 24))
-})
+const daysUntilExpiry = computed(() => props.visite.jours_restants)
+const diff = new Date() - new Date(props.visite.validite)
+const true_diff = Math.floor(diff / (1000 * 60 * 60 * 24))
+
 
 const validityWarning = computed(() => {
-  if (daysUntilExpiry.value === null) return null
-  
-  if (daysUntilExpiry.value < 0) {
+  if (!props.visite.validite) return null
+
+  if (props.visite.statut_echeance === 'expired') {
     return {
       class: 'bg-red-100 text-red-800',
-      text: '❌ Expiré'
+      text: '❌ Expiré il y a '+true_diff+'j'
     }
   }
-  if (daysUntilExpiry.value <= 30) {
+  if (props.visite.statut_echeance === 'approaching') {
     return {
       class: 'bg-yellow-100 text-yellow-800',
       text: `⚠️ Expire dans ${daysUntilExpiry.value}j`

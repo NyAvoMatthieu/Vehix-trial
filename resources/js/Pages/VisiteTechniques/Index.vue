@@ -17,17 +17,19 @@
 
     <div class="py-12">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        
         <!-- Véhicule sélectionné -->
         <div v-if="selectedVehicule" class="mb-6 bg-white rounded-lg shadow p-4">
           <div class="flex items-center">
-            <div class="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+            <div
+              class="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center"
+            >
               <TruckIcon class="h-6 w-6 text-indigo-600" />
             </div>
             <div class="ml-4">
               <p class="text-sm text-gray-500">Véhicule sélectionné</p>
               <p class="font-semibold text-gray-900">
-                {{ selectedVehicule.alias }}: {{ selectedVehicule.make }} - {{ selectedVehicule.license_plate }}
+                {{ selectedVehicule.alias }}: {{ selectedVehicule.make }} -
+                {{ selectedVehicule.license_plate }}
               </p>
             </div>
           </div>
@@ -35,7 +37,7 @@
 
         <!-- Filtres -->
         <div class="mb-6 bg-white rounded-lg shadow p-4">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <input
               v-model="searchQuery"
               type="text"
@@ -52,6 +54,53 @@
               <option value="APTE">🟢 APTE</option>
               <option value="INAPTE">🔴 INAPTE</option>
             </select>
+
+            <select
+              v-if="vehicules && vehicules.length > 1"
+              v-model="vehiculeFilter"
+              class="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              @change="search"
+            >
+              <option value="all">Tous les véhicules</option>
+              <option v-for="v in vehicules" :key="v.id" :value="v.id">
+                {{ v.make }} {{ v.model }} — {{ v.license_plate }}
+              </option>
+            </select>
+
+            <select
+              v-model="statutFilter"
+              class="border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+              @change="search"
+            >
+              <option value="all">Tous les statuts</option>
+              <option value="ok">🟢 À jour</option>
+              <option value="approaching">🟠 Bientôt échue</option>
+              <option value="expired">🔴 Expirée</option>
+            </select>
+
+            <div class="flex items-center gap-2">
+              <input
+                v-model="dateDebutFilter"
+                type="date"
+                class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                @change="search"
+              />
+              <span class="text-gray-400 text-sm">à</span>
+              <input
+                v-model="dateFinFilter"
+                type="date"
+                class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                @change="search"
+              />
+            </div>
+
+            <button
+              type="button"
+              @click="resetFilters"
+              class="text-sm text-gray-600 hover:text-gray-900 underline text-left md:text-center"
+            >
+              Réinitialiser les filtres
+            </button>
           </div>
         </div>
 
@@ -59,7 +108,9 @@
         <div class="bg-white shadow-xl sm:rounded-lg overflow-hidden">
           <div v-if="visites.data.length === 0" class="px-6 py-12 text-center">
             <ClipboardDocumentCheckIcon class="mx-auto h-12 w-12 text-gray-400" />
-            <h3 class="mt-2 text-sm font-medium text-gray-900">Aucune visite technique</h3>
+            <h3 class="mt-2 text-sm font-medium text-gray-900">
+              Aucune visite technique
+            </h3>
             <p class="mt-1 text-sm text-gray-500">
               Commencez par enregistrer votre première visite technique.
             </p>
@@ -78,31 +129,49 @@
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                  >
                     Date visite
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                  >
                     Véhicule
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                  >
                     N° PV
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                  >
                     Centre
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                  >
                     Validité
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase"
+                  >
                     Aptitude
                   </th>
-                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                  <th
+                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase"
+                  >
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="visite in visites.data" :key="visite.id" class="hover:bg-gray-50">
+                <tr
+                  v-for="visite in visites.data"
+                  :key="visite.id"
+                  class="hover:bg-gray-50"
+                >
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-medium text-gray-900">
                       {{ formatDate(visite.date_visite) }}
@@ -113,7 +182,12 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">
-                       {{ selectedVehicule?.make || visite.vehicule_make || visite.make || '—' }}
+                      {{
+                        selectedVehicule?.make ||
+                        visite.vehicule_make ||
+                        visite.make ||
+                        "—"
+                      }}
                     </div>
                     <div class="text-sm text-gray-500 font-mono">
                       {{ visite.immatriculation }}
@@ -121,37 +195,57 @@
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-mono text-gray-900">
-                      {{ visite.numero_pv || '—' }}
+                      {{ visite.numero_pv || "—" }}
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">
-                      {{ visite.centre || '—' }}
+                      {{ visite.centre || "—" }}
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm text-gray-900">
-                      {{ visite.validite ? formatDate(visite.validite) : '—' }}
+                      {{ visite.validite ? formatDate(visite.validite) : "—" }}
                     </div>
-                    <span v-if="visite.validite" :class="getValidityBadgeClass(visite)" class="text-xs px-2 py-1 rounded-full">
+                    <span
+                      v-if="visite.validite"
+                      :class="getValidityBadgeClass(visite)"
+                      class="inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-full"
+                    >
+                      <EcheancePulseDot :statut="visite.statut_echeance" />
                       {{ getValidityText(visite) }}
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <span :class="visite.aptitude === 'APTE' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" 
-                          class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full">
-                      {{ visite.aptitude === 'APTE' ? '🟢 APTE' : '🔴 INAPTE' }}
+                    <span
+                      :class="
+                        visite.aptitude === 'APTE'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-red-100 text-red-800'
+                      "
+                      class="px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full"
+                    >
+                      {{ visite.aptitude === "APTE" ? "🟢 APTE" : "🔴 INAPTE" }}
                     </span>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                     <div class="flex justify-end space-x-2">
-                      <Link :href="route('visite-techniques.show', visite.id)" class="text-indigo-600 hover:text-indigo-900">
+                      <Link
+                        :href="route('visite-techniques.show', visite.id)"
+                        class="text-indigo-600 hover:text-indigo-900"
+                      >
                         Voir
                       </Link>
-                      <Link :href="route('visite-techniques.edit', visite.id)" class="text-gray-600 hover:text-gray-900">
+                      <Link
+                        :href="route('visite-techniques.edit', visite.id)"
+                        class="text-gray-600 hover:text-gray-900"
+                      >
                         Modifier
                       </Link>
-                      <button @click="confirmDelete(visite)" class="text-red-600 hover:text-red-900">
+                      <button
+                        @click="confirmDelete(visite)"
+                        class="text-red-600 hover:text-red-900"
+                      >
                         Supprimer
                       </button>
                     </div>
@@ -165,8 +259,8 @@
           <div v-if="visites.data.length > 0" class="px-6 py-4 border-t border-gray-200">
             <div class="flex items-center justify-between">
               <div class="text-sm text-gray-700">
-                Affichage de <span class="font-medium">{{ visites.from }}</span> à 
-                <span class="font-medium">{{ visites.to }}</span> sur 
+                Affichage de <span class="font-medium">{{ visites.from }}</span> à
+                <span class="font-medium">{{ visites.to }}</span> sur
                 <span class="font-medium">{{ visites.total }}</span> résultats
               </div>
               <div class="flex space-x-2">
@@ -180,7 +274,7 @@
               </div>
             </div>
           </div>
-            <!-- Fin Pagination -->
+          <!-- Fin Pagination -->
         </div>
       </div>
     </div>
@@ -188,74 +282,97 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
-import AppLayout from '@/Layouts/AppLayout.vue'
-import { PlusIcon, TruckIcon, ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline'
+import { ref } from "vue";
+import { Link, router } from "@inertiajs/vue3";
+import AppLayout from "@/Layouts/AppLayout.vue";
+import EcheancePulseDot from "@/Components/EcheancePulseDot.vue";
+import {
+  PlusIcon,
+  TruckIcon,
+  ClipboardDocumentCheckIcon,
+} from "@heroicons/vue/24/outline";
 
 const props = defineProps({
   visites: Object,
   selectedVehicule: Object,
-  filters: Object
-})
+  vehicules: Array,
+  filters: Object,
+});
 
-const searchQuery = ref(props.filters?.search || '')
-const aptitudeFilter = ref(props.filters?.aptitude || 'all')
+const searchQuery = ref(props.filters?.search || "");
+const aptitudeFilter = ref(props.filters?.aptitude || "all");
+const vehiculeFilter = ref(props.filters?.vehicule_id || "all");
+const statutFilter = ref(props.filters?.statut || "all");
+const dateDebutFilter = ref(props.filters?.date_debut || "");
+const dateFinFilter = ref(props.filters?.date_fin || "");
 
 const search = () => {
-  router.get(route('visite-techniques.index'), {
-    search: searchQuery.value,
-    aptitude: aptitudeFilter.value
-  }, {
-    preserveState: true,
-    replace: true
-  })
-}
+  router.get(
+    route("visite-techniques.index"),
+    {
+      search: searchQuery.value,
+      aptitude: aptitudeFilter.value,
+      vehicule_id: vehiculeFilter.value,
+      statut: statutFilter.value,
+      date_debut: dateDebutFilter.value,
+      date_fin: dateFinFilter.value,
+    },
+    {
+      preserveState: true,
+      replace: true,
+    }
+  );
+};
+
+const resetFilters = () => {
+  searchQuery.value = "";
+  aptitudeFilter.value = "all";
+  vehiculeFilter.value = "all";
+  statutFilter.value = "all";
+  dateDebutFilter.value = "";
+  dateFinFilter.value = "";
+  search();
+};
 
 const formatDate = (date) => {
-  if (!date) return '—'
-  return new Date(date).toLocaleDateString('fr-FR', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
+  if (!date) return "—";
+  return new Date(date).toLocaleDateString("fr-FR", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
 
 const getValidityText = (visite) => {
-  if (!visite.validite) return ''
-  const now = new Date()
-  const validite = new Date(visite.validite)
-  const days = Math.ceil((validite - now) / (1000 * 60 * 60 * 24))
-  
-  if (days < 0) return 'Expiré'
-  if (days <= 30) return `${days}j restants`
-  return 'Valide'
-}
+  const diff = new Date() - new Date(visite.validite);
+  const true_diff = Math.floor(diff / (1000 * 60 * 60 * 24));
+  if (!visite.validite) return "";
+  if (visite.statut_echeance === "expired") return "Expiré il y a " + true_diff + "j";
+  if (visite.statut_echeance === "approaching")
+    return `${visite.jours_restants}j restants`;
+  return "Valide";
+};
 
 const getValidityBadgeClass = (visite) => {
-  if (!visite.validite) return ''
-  const now = new Date()
-  const validite = new Date(visite.validite)
-  const days = Math.ceil((validite - now) / (1000 * 60 * 60 * 24))
-  
-  if (days < 0) return 'bg-red-100 text-red-800'
-  if (days <= 30) return 'bg-yellow-100 text-yellow-800'
-  return 'bg-green-100 text-green-800'
-}
+  if (!visite.validite) return "";
+  if (visite.statut_echeance === "expired") return "bg-red-100 text-red-800";
+  if (visite.statut_echeance === "approaching") return "bg-yellow-100 text-yellow-800";
+  return "bg-green-100 text-green-800";
+};
 
 const confirmDelete = (visite) => {
-  if (confirm('Êtes-vous sûr de vouloir supprimer cette visite technique ?')) {
-    router.delete(route('visite-techniques.destroy', visite.id))
+  if (confirm("Êtes-vous sûr de vouloir supprimer cette visite technique ?")) {
+    router.delete(route("visite-techniques.destroy", visite.id));
   }
-}
+};
 
 const getPaginationLinkClass = (link) => {
   if (!link.url) {
-    return 'px-3 py-2 text-sm rounded-md text-gray-400 cursor-not-allowed'
+    return "px-3 py-2 text-sm rounded-md text-gray-400 cursor-not-allowed";
   }
   if (link.active) {
-    return 'px-3 py-2 text-sm rounded-md bg-indigo-600 text-white'
+    return "px-3 py-2 text-sm rounded-md bg-indigo-600 text-white";
   }
-  return 'px-3 py-2 text-sm rounded-md bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-}
+  return "px-3 py-2 text-sm rounded-md bg-white text-gray-700 hover:bg-gray-50 border border-gray-300";
+};
 </script>

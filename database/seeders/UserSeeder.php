@@ -16,22 +16,22 @@ class UserSeeder extends Seeder
     public function run(): void
     {
         // Admin par défaut
-        User::create([
-            'name' => 'Hasnreziga Admin',
-            'email' => 'admin@automanager.com',
-            'password' => Hash::make('#HasVehix2025!'),
-            'role' => UserRole::ADMIN,
-            'email_verified_at' => now(),
-        ]);
+        // User::create([
+        //     'name' => 'Hasnreziga Admin',
+        //     'email' => 'admin@automanager.com',
+        //     'password' => Hash::make('#HasVehix2025!'),
+        //     'role' => UserRole::ADMIN,
+        //     'email_verified_at' => now(),
+        // ]);
 
         // Validateur par défaut
-        User::create([
-            'name' => 'Hasina ANDL',
-            'email' => 'hasinaandritina538@gmail.com',
-            'password' => Hash::make('#HasVehix2025!'),
-            'role' => UserRole::VALIDATOR,
-            'email_verified_at' => now(),
-        ]);
+        // User::create([
+        //     'name' => 'Hasina ANDL',
+        //     'email' => 'hasinaandritina538@gmail.com',
+        //     'password' => Hash::make('#HasVehix2025!'),
+        //     'role' => UserRole::VALIDATOR,
+        //     'email_verified_at' => now(),
+        // ]);
 
         // Clients de démonstration
         /*$clients = [

@@ -14,6 +14,7 @@ class Maintenance extends Model
      protected $fillable = [
         'reference',
         'vehicule_id',
+        'intervention_type_id', // ⭐ NOUVEAU — Partie 4
         'user_id',
         'nature_intervention',
         'kilometrage_actuel',
@@ -116,6 +117,12 @@ class Maintenance extends Model
     public function recus()
     {
         return $this->morphMany(Recu::class, 'recuable');
+    }
+
+    // ⭐ NOUVEAU — Partie 4 : type d'intervention du catalogue global (optionnel)
+    public function interventionType()
+    {
+        return $this->belongsTo(MaintenanceInterventionType::class, 'intervention_type_id');
     }
 
     // Méthodes utiles

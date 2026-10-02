@@ -53,10 +53,13 @@ class TrajetController extends Controller
         // Récupérer le dernier kilométrage ou utiliser le kilométrage initial
         $lastOdo = Trajet::getLastOdometer($vehicule->id);
         $lastKnownOdo = $lastOdo ?: $vehicule->mileage;
+        $lastDest = Trajet::getLastKnownDestination($vehicule->id);
+        $lastKnownDest = $lastDest ?: $vehicule->mileage;
 
         return Inertia::render('Trajets/Create', [
             'vehicule' => $vehicule,
             'lastKnownOdo' => $lastKnownOdo,
+            'lastKnownDestination' => $lastKnownDest,
         ]);
     }
 
@@ -78,9 +81,16 @@ class TrajetController extends Controller
             'odo_start' => 'nullable|numeric|min:0',
             'odo_end' => 'nullable|numeric|gt:odo_start',
             'notes' => 'nullable|string',
+
+            'mode_saisie' => 'nullable|in:manuel,geolocalisation',
+            'depart_latitude' => 'required_if:mode_saisie,geolocalisation|nullable|numeric|between:-90,90',
+            'depart_longitude' => 'required_if:mode_saisie,geolocalisation|nullable|numeric|between:-180,180',
+            'arrivee_latitude' => 'required_if:mode_saisie,geolocalisation|nullable|numeric|between:-90,90',
+            'arrivee_longitude' => 'required_if:mode_saisie,geolocalisation|nullable|numeric|between:-180,180',
         ]);
 
         $validated['user_id'] = auth()->id();
+        $validated['mode_saisie'] = $validated['mode_saisie'] ?? 'manuel';
 
         Trajet::create($validated);
 
@@ -142,6 +152,12 @@ class TrajetController extends Controller
             'odo_start' => 'nullable|numeric|min:0',
             'odo_end' => 'required_if:kilometrage_mode,odometer|nullable|numeric|gt:odo_start',
             'notes' => 'nullable|string',
+
+            'mode_saisie' => 'nullable|in:manuel,geolocalisation',
+            'depart_latitude' => 'required_if:mode_saisie,geolocalisation|nullable|numeric|between:-90,90',
+            'depart_longitude' => 'required_if:mode_saisie,geolocalisation|nullable|numeric|between:-180,180',
+            'arrivee_latitude' => 'required_if:mode_saisie,geolocalisation|nullable|numeric|between:-90,90',
+            'arrivee_longitude' => 'required_if:mode_saisie,geolocalisation|nullable|numeric|between:-180,180',
         ]);
 
         $trajet->update($validated);

@@ -3,22 +3,32 @@
 namespace App\Http\Controllers;
 
 use App\Models\Maintenance;
+use App\Models\MaintenanceInterventionType;
 use Illuminate\Http\Request;
 use App\Models\Vehicule;
 use App\Models\User;
 use App\Models\MaintenancePiece;
+use App\Services\MaintenanceIntervalleService;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class MaintenanceController extends Controller
 {
+    // ⭐ NOUVEAU — Partie 4
+    public function __construct(protected MaintenanceIntervalleService $maintenanceIntervalleService)
+    {
+    }
+
     public function index(Request $request)
     {
         $selectedVehiculeId = session('selected_vehicule_id');
-    
-        $query = Maintenance::with(['vehicule', 'pieces'])
-            ->where('user_id', auth()->id());
+
+        $query = Maintenance::with(['vehicule', 'pieces']);
+
+        if (auth()->user()->role === 'client') {
+            $query->where('user_id', auth()->id());
+        }
 
         if ($selectedVehiculeId) {
             $query->where('vehicule_id', $selectedVehiculeId);
@@ -26,13 +36,13 @@ class MaintenanceController extends Controller
 
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('reference', 'like', "%{$search}%")
-                  ->orWhere('nature_intervention', 'like', "%{$search}%")
-                  ->orWhere('garage_nom', 'like', "%{$search}%")
-                  ->orWhereHas('vehicule', function($q) use ($search) {
-                      $q->where('license_plate', 'like', "%{$search}%");
-                  });
+                    ->orWhere('nature_intervention', 'like', "%{$search}%")
+                    ->orWhere('garage_nom', 'like', "%{$search}%")
+                    ->orWhereHas('vehicule', function ($q) use ($search) {
+                        $q->where('license_plate', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -44,23 +54,34 @@ class MaintenanceController extends Controller
         }
 
         // Statistiques FILTRÉES
-        $statsQuery = Maintenance::where('user_id', auth()->id());
+        // $statsQuery = Maintenance::where('user_id', auth()->id());
+        $statsQuery = Maintenance::query();
+
+        if (auth()->user()->role === 'client') {
+            $statsQuery->where('user_id', auth()->id());
+        }
         if ($selectedVehiculeId) {
             $statsQuery->where('vehicule_id', $selectedVehiculeId);
         }
 
         // Calculer les statistiques
         $allMaintenances = (clone $statsQuery)->get();
-        
+
         $coutMainOeuvre = $allMaintenances->sum('cout_main_oeuvre');
         $coutPieces = $allMaintenances->sum('cout_pieces');
         $coutTotal = $coutMainOeuvre + $coutPieces;
 
         // Statistiques du mois en cours
-        $statsQueryMois = Maintenance::where('user_id', auth()->id())
-            ->whereMonth('date_debut', now()->month)
+        // $statsQueryMois = Maintenance::where('user_id', auth()->id())
+        //     ->whereMonth('date_debut', now()->month)
+        //     ->whereYear('date_debut', now()->year);
+        $statsQueryMois = Maintenance::whereMonth('date_debut', now()->month)
             ->whereYear('date_debut', now()->year);
-        
+
+        if (auth()->user()->role === 'client') {
+            $statsQueryMois->where('user_id', auth()->id());
+        }
+
         if ($selectedVehiculeId) {
             $statsQueryMois->where('vehicule_id', $selectedVehiculeId);
         }
@@ -71,8 +92,16 @@ class MaintenanceController extends Controller
         $coutTotalMois = $coutMainOeuvreMois + $coutPiecesMois;
 
         // Compter les pièces en alerte
-        $piecesAlerteQuery = MaintenancePiece::whereHas('maintenance', function($q) use ($selectedVehiculeId) {
-            $q->where('user_id', auth()->id());
+        // $piecesAlerteQuery = MaintenancePiece::whereHas('maintenance', function ($q) use ($selectedVehiculeId) {
+        //     $q->where('user_id', auth()->id());
+        //     if ($selectedVehiculeId) {
+        //         $q->where('vehicule_id', $selectedVehiculeId);
+        //     }
+        // })->where('alerte_proche_limite', true);
+        $piecesAlerteQuery = MaintenancePiece::whereHas('maintenance', function ($q) use ($selectedVehiculeId) {
+            if (auth()->user()->role === 'client') {
+                $q->where('user_id', auth()->id());
+            }
             if ($selectedVehiculeId) {
                 $q->where('vehicule_id', $selectedVehiculeId);
             }
@@ -83,13 +112,13 @@ class MaintenanceController extends Controller
             'cout_total_main_oeuvre' => (float) $coutMainOeuvre,
             'cout_total_pieces' => (float) $coutPieces,
             'cout_total_global' => (float) $coutTotal,
-            
+
             // Statistiques du mois
             'total_maintenances_mois' => $maintenancesMois->count(),
             'cout_total_main_oeuvre_mois' => (float) $coutMainOeuvreMois,
             'cout_total_pieces_mois' => (float) $coutPiecesMois,
             'cout_total_global_mois' => (float) $coutTotalMois,
-            
+
             // Alertes pièces
             'pieces_alerte' => $piecesAlerteQuery->count(),
         ];
@@ -117,6 +146,9 @@ class MaintenanceController extends Controller
         return Inertia::render('Maintenances/Create', [
             'vehicule' => $vehicule,
             'lastKilometrage' => $lastKilometrage,
+            // ⭐ NOUVEAU — Partie 4 : liste pour le select "Type d'intervention (catalogue)"
+            // À ajouter dans Maintenances/Create.vue, champ optionnel.
+            'interventionTypes' => MaintenanceInterventionType::actif()->orderBy('nom')->get(['id', 'nom']),
         ]);
     }
 
@@ -124,6 +156,9 @@ class MaintenanceController extends Controller
     {
         $validated = $request->validate([
             'vehicule_id' => 'required|exists:vehicules,id',
+            // ⭐ NOUVEAU — Partie 4
+            'intervention_type_id' => 'nullable|exists:maintenance_intervention_types,id',
+            'nouveau_type_nom' => 'nullable|string|max:255',
             'nature_intervention' => 'required|string|max:255',
             'kilometrage_actuel' => 'required|numeric|min:0',
             'date_debut' => 'required|date',
@@ -153,6 +188,7 @@ class MaintenanceController extends Controller
 
         try {
             $validated['user_id'] = auth()->id();
+            $this->resolveInterventionType($validated);
 
             $pieces = $validated['pieces'] ?? [];
             unset($validated['pieces']);
@@ -166,6 +202,9 @@ class MaintenanceController extends Controller
                 $maintenance->pieces()->create($pieceData);
             }
 
+            $maintenance->update(['validated_at' => now(), 'validateur_id' => auth()->id()]);
+            $this->maintenanceIntervalleService->synchroniserApresMaintenance($maintenance->fresh());
+
             DB::commit();
 
             return redirect()->route('maintenances.show', $maintenance)
@@ -177,7 +216,7 @@ class MaintenanceController extends Controller
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString()
             ]);
-        
+
             return back()->withInput()->withErrors(['error' => 'Erreur lors de la création: ' . $e->getMessage()]);
         }
     }
@@ -190,6 +229,7 @@ class MaintenanceController extends Controller
             'vehicule',
             'user',
             'validateur',
+            'interventionType', // ⭐ NOUVEAU — Partie 4
             'pieces' => fn($q) => $q->orderBy('created_at', 'desc'),
         ]);
 
@@ -219,6 +259,8 @@ class MaintenanceController extends Controller
 
         return Inertia::render('Maintenances/Edit', [
             'maintenance' => $maintenance,
+            // ⭐ NOUVEAU — Partie 4
+            'interventionTypes' => MaintenanceInterventionType::actif()->orderBy('nom')->get(['id', 'nom']),
         ]);
     }
 
@@ -232,6 +274,9 @@ class MaintenanceController extends Controller
         }
 
         $validated = $request->validate([
+            // ⭐ NOUVEAU — Partie 4
+            'intervention_type_id' => 'nullable|exists:maintenance_intervention_types,id',
+            'nouveau_type_nom' => 'nullable|string|max:255',
             'nature_intervention' => 'required|string|max:255',
             'kilometrage_actuel' => 'required|numeric|min:0',
             'date_debut' => 'required|date',
@@ -325,6 +370,26 @@ class MaintenanceController extends Controller
             'date_fin' => $validated['date_fin'],
         ]);
 
+        // ⭐ NOUVEAU — Partie 4 : synchronise le suivi véhicule (dernier_km_effectue /
+        // derniere_date_effectuee) uniquement une fois la maintenance confirmée.
+        $this->maintenanceIntervalleService->synchroniserApresMaintenance($maintenance->fresh());
+
         return back()->with('success', 'Maintenance validée avec succès.');
+    }
+
+    private function resolveInterventionType(array &$validated): void
+    {
+        $nom = trim($validated['nouveau_type_nom'] ?? '');
+        unset($validated['nouveau_type_nom']);
+
+        if ($nom === '') {
+            return;
+        }
+
+        // Réutilise un type existant de même nom (insensible à la casse), sinon le crée
+        $type = MaintenanceInterventionType::whereRaw('LOWER(nom) = ?', [mb_strtolower($nom)])->first()
+            ?? MaintenanceInterventionType::create(['nom' => $nom, 'actif' => true]);
+
+        $validated['intervention_type_id'] = $type->id;
     }
 }

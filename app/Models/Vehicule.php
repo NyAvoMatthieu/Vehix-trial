@@ -11,7 +11,7 @@ class Vehicule extends Model
     /** @use HasFactory<\Database\Factories\VehiculeFactory> */
     use HasFactory;
 
-     protected $fillable = [
+    protected $fillable = [
         'user_id',
         'proprietaire_id',
         'make',
@@ -56,7 +56,7 @@ class Vehicule extends Model
         'charge_utile' => 'decimal:2',
     ];
 
-        // Relations
+    // Relations
     public function user()
     {
         return $this->belongsTo(User::class);
@@ -92,9 +92,9 @@ class Vehicule extends Model
         return $this->hasMany(Trajet::class);
     }
     public function visiteTechniques()
-{
-    return $this->hasMany(VisiteTechnique::class);
-}
+    {
+        return $this->hasMany(VisiteTechnique::class);
+    }
 
     // Méthodes utilitaires
     public function isPending(): bool
@@ -136,6 +136,17 @@ class Vehicule extends Model
     public function getVehicleTypeAttribute($value): ?string
     {
         return $value;
+    }
+
+    // 
+    public function getKilometrageActuelAttribute(): int
+    {
+        $dernierOdoEnd = $this->trajets()
+            ->whereNotNull('odo_end')
+            ->orderByDesc('heure_arrivee')
+            ->value('odo_end');
+
+        return (int) ($dernierOdoEnd ?? $this->mileage ?? 0);
     }
 
     // Méthodes utilitaires pour le type de véhicule
@@ -199,6 +210,7 @@ class Vehicule extends Model
     {
         return $this->fuel_type === 'gpl';
     }
+
     // Méthode utilitaire pour vérifier la validité de la visite technique
     public function hasValidVisiteTechnique(): bool
     {
@@ -258,7 +270,7 @@ class Vehicule extends Model
         if ($totalDistance > 0) {
             // Calcul : (litres / distance) * 100
             $averageConsumption = ($totalLiters / $totalDistance) * 100;
-            
+
             $this->update([
                 'average_consumption' => round($averageConsumption, 2)
             ]);

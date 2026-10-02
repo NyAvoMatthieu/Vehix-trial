@@ -2,9 +2,7 @@
   <AppLayout title="Assurances">
     <template #header>
       <div class="flex justify-between items-center">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-          Mes Assurances
-        </h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight">Mes Assurances</h2>
         <Link
           :href="route('assurances.create')"
           class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-500 focus:outline-none focus:border-indigo-700 focus:ring focus:ring-indigo-200 active:bg-indigo-600 disabled:opacity-25 transition"
@@ -21,13 +19,16 @@
         <div v-if="selectedVehicule" class="mb-6 bg-white rounded-lg shadow p-4">
           <div class="flex items-center justify-between">
             <div class="flex items-center">
-              <div class="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+              <div
+                class="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center"
+              >
                 <TruckIcon class="h-6 w-6 text-indigo-600" />
               </div>
               <div class="ml-4">
                 <p class="text-sm text-gray-500">Véhicule sélectionné</p>
                 <p class="font-semibold text-gray-900">
-                 {{ selectedVehicule.alias }} : {{ selectedVehicule.make }}- {{ selectedVehicule.license_plate }}
+                  {{ selectedVehicule.alias }} : {{ selectedVehicule.make }}-
+                  {{ selectedVehicule.license_plate }}
                 </p>
               </div>
             </div>
@@ -37,9 +38,7 @@
         <!-- Liste des assurances -->
         <div class="bg-white shadow-xl sm:rounded-lg overflow-hidden">
           <div class="px-6 py-4 border-b border-gray-200">
-            <h3 class="text-lg font-semibold text-gray-900">
-              Contrats d'assurance
-            </h3>
+            <h3 class="text-lg font-semibold text-gray-900">Contrats d'assurance</h3>
           </div>
 
           <div v-if="assurances.data.length === 0" class="px-6 py-12 text-center">
@@ -63,34 +62,54 @@
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Assureur
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Police
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Véhicule
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Période
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Prime totale
                   </th>
-                  <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Statut
                   </th>
-                  <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  <th
+                    class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider"
+                  >
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                <tr v-for="assurance in assurances.data" :key="assurance.id" class="hover:bg-gray-50">
+                <tr
+                  v-for="assurance in assurances.data"
+                  :key="assurance.id"
+                  class="hover:bg-gray-50"
+                >
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center">
-                      <div class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                      <div
+                        class="flex-shrink-0 h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center"
+                      >
                         <ShieldCheckIcon class="h-6 w-6 text-indigo-600" />
                       </div>
                       <div class="ml-4">
@@ -116,19 +135,28 @@
                       {{ assurance.vehicule.license_plate }}
                     </div>
                   </td>
-              
-                    <td class="px-6 py-4 whitespace-nowrap">
-                        <div class="text-sm text-gray-900">
-                            {{ formatDate(assurance.start_date) }}
-                        </div>
-                        <div class="flex items-center text-sm text-gray-500">
-                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                            </svg>
-                            {{ formatDate(assurance.end_date) }}
-                        </div>
-                    </td>
 
+                  <td class="px-6 py-4 whitespace-nowrap">
+                    <div class="text-sm text-gray-900">
+                      {{ formatDate(assurance.start_date) }}
+                    </div>
+                    <div class="flex items-center text-sm text-gray-500">
+                      <svg
+                        class="w-4 h-4 mr-1"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          stroke-linecap="round"
+                          stroke-linejoin="round"
+                          stroke-width="2"
+                          d="M19 14l-7 7m0 0l-7-7m7 7V3"
+                        />
+                      </svg>
+                      {{ formatDate(assurance.end_date) }}
+                    </div>
+                  </td>
 
                   <td class="px-6 py-4 whitespace-nowrap">
                     <div class="text-sm font-semibold text-gray-900">
@@ -136,7 +164,11 @@
                     </div>
                   </td>
                   <td class="px-6 py-4 whitespace-nowrap">
-                    <span :class="getStatusBadgeClass(assurance)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                    <span
+                      :class="getStatusBadgeClass(assurance)"
+                      class="px-2 inline-flex items-center gap-1.5 text-xs leading-5 font-semibold rounded-full"
+                    >
+                      <EcheancePulseDot :statut="assurance.statut_echeance" />
                       {{ getStatusText(assurance) }}
                     </span>
                   </td>
@@ -167,29 +199,32 @@
             </table>
           </div>
 
-            <!-- Pagination -->
-                <div v-if="assurances.data.length > 0" class="px-6 py-4 border-t border-gray-200">
-                <div class="flex items-center justify-between">
-                    <div class="text-sm text-gray-700">
-                    Affichage de <span class="font-medium">{{ assurances.from }}</span> à 
-                    <span class="font-medium">{{ assurances.to }}</span> sur 
-                    <span class="font-medium">{{ assurances.total }}</span> résultats
-                    </div>
-                    
-                    <!-- Boutons de pagination -->
-                <div class="flex space-x-2">
+          <!-- Pagination -->
+          <div
+            v-if="assurances.data.length > 0"
+            class="px-6 py-4 border-t border-gray-200"
+          >
+            <div class="flex items-center justify-between">
+              <div class="text-sm text-gray-700">
+                Affichage de <span class="font-medium">{{ assurances.from }}</span> à
+                <span class="font-medium">{{ assurances.to }}</span> sur
+                <span class="font-medium">{{ assurances.total }}</span> résultats
+              </div>
+
+              <!-- Boutons de pagination -->
+              <div class="flex space-x-2">
                 <Link
-                    v-for="link in assurances.links"
-                    :key="link.label"
-                    :href="link.url || '#'"
-                    :class="getPaginationLinkClass(link)"
-                    :disabled="!link.url"
+                  v-for="link in assurances.links"
+                  :key="link.label"
+                  :href="link.url || '#'"
+                  :class="getPaginationLinkClass(link)"
+                  :disabled="!link.url"
                 >
                   <span v-html="link.label"></span>
                 </Link>
-                </div>
+              </div>
             </div>
-            </div>
+          </div>
           <!-- Fin Pagination -->
         </div>
       </div>
@@ -198,77 +233,75 @@
 </template>
 
 <script setup>
-import { Link, router } from '@inertiajs/vue3'
-import AppLayout from '@/Layouts/AppLayout.vue'
-import { 
-  PlusIcon, 
-  TruckIcon, 
-  ShieldCheckIcon, 
-  ShieldExclamationIcon 
-} from '@heroicons/vue/24/outline'
+import { Link, router } from "@inertiajs/vue3";
+import AppLayout from "@/Layouts/AppLayout.vue";
+import EcheancePulseDot from "@/Components/EcheancePulseDot.vue";
+import {
+  PlusIcon,
+  TruckIcon,
+  ShieldCheckIcon,
+  ShieldExclamationIcon,
+} from "@heroicons/vue/24/outline";
 
 defineProps({
   assurances: Object,
-  selectedVehicule: Object
-})
+  selectedVehicule: Object,
+});
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('fr-FR', {
-    year: 'numeric',
-    month: 'short',
-    day: 'numeric'
-  })
-}
+  return new Date(date).toLocaleDateString("fr-FR", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+};
 
 const formatCurrency = (value) => {
-  return new Intl.NumberFormat('fr-FR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  }).format(value) + ' Ar'
-}
+  return (
+    new Intl.NumberFormat("fr-FR", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(value) + " Ar"
+  );
+};
 
 const getStatusText = (assurance) => {
-  const now = new Date()
-  const endDate = new Date(assurance.end_date)
-  const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24))
-
-  if (daysUntilExpiry < 0) return 'Expiré'
-  if (daysUntilExpiry <= 30) return `Expire dans ${daysUntilExpiry}j`
-  return 'Actif'
-}
+  const diff = new Date() - new Date(assurance.end_date);
+  const true_diff = Math.floor(diff / (1000 * 60 * 60 * 24)); // Conversion en jours (1 jour = 24h * 60m * 60s * 1000ms = 86 400 000 ms)
+  if (assurance.statut_echeance === "expired") return true_diff===0?"Expire aujourd\'hui" : "Expiré il y a " + true_diff + " j";
+  if (assurance.statut_echeance === "approaching") {
+    return assurance.jours_restants >= 0
+      ? `Expire dans ${assurance.jours_restants} j`
+      : "Expire bientôt";
+  }
+  return "Actif";
+};
 
 const getStatusBadgeClass = (assurance) => {
-  const now = new Date()
-  const endDate = new Date(assurance.end_date)
-  const daysUntilExpiry = Math.ceil((endDate - now) / (1000 * 60 * 60 * 24))
-
-  if (daysUntilExpiry < 0) return 'bg-red-100 text-red-800'
-  if (daysUntilExpiry <= 30) return 'bg-yellow-100 text-yellow-800'
-  return 'bg-green-100 text-green-800'
-}
+  if (assurance.statut_echeance === "expired") return "bg-red-100 text-red-800";
+  if (assurance.statut_echeance === "approaching") return "bg-yellow-100 text-yellow-800";
+  return "bg-green-100 text-green-800";
+};
 
 const confirmDelete = (assurance) => {
-  if (confirm('Êtes-vous sûr de vouloir supprimer cette assurance ?')) {
-    router.delete(route('assurances.destroy', assurance.id))
+  if (confirm("Êtes-vous sûr de vouloir supprimer cette assurance ?")) {
+    router.delete(route("assurances.destroy", assurance.id));
   }
-}
+};
 
 const getPaginationLinkClass = (link) => {
   if (!link.url) {
     return [
-      'px-3 py-2 text-sm rounded-md',
-      'text-gray-400 cursor-not-allowed pointer-events-none'
-    ]
+      "px-3 py-2 text-sm rounded-md",
+      "text-gray-400 cursor-not-allowed pointer-events-none",
+    ];
   }
   if (link.active) {
-    return [
-      'px-3 py-2 text-sm rounded-md',
-      'bg-indigo-600 text-white'
-    ]
+    return ["px-3 py-2 text-sm rounded-md", "bg-indigo-600 text-white"];
   }
   return [
-    'px-3 py-2 text-sm rounded-md',
-    'bg-white text-gray-700 hover:bg-gray-50 border border-gray-300'
-  ]
-}
+    "px-3 py-2 text-sm rounded-md",
+    "bg-white text-gray-700 hover:bg-gray-50 border border-gray-300",
+  ];
+};
 </script>

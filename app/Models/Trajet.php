@@ -25,6 +25,11 @@ class Trajet extends Model
         'odo_end',
         'kilometrage_mode',
         'notes',
+        'mode_saisie',
+        'depart_latitude',
+        'depart_longitude',
+        'arrivee_latitude',
+        'arrivee_longitude',
     ];
 
     protected $casts = [
@@ -35,6 +40,10 @@ class Trajet extends Model
         'km_arrivee' => 'decimal:2',
         'odo_start' => 'decimal:2',
         'odo_end' => 'decimal:2',
+        'depart_latitude' => 'decimal:7',
+        'depart_longitude' => 'decimal:7',
+        'arrivee_latitude' => 'decimal:7',
+        'arrivee_longitude' => 'decimal:7',
     ];
 
     //Définition du format de sérialisation des dates
@@ -87,6 +96,13 @@ class Trajet extends Model
             ->whereNotNull('odo_end')
             ->orderBy('heure_arrivee', 'desc')
             ->value('odo_end');
+    }
+
+    public static function getLastKnownDestination($vehiculeId){
+        return static::where('vehicule_id', $vehiculeId)
+            ->whereNotNull('odo_end')
+            ->orderBy('heure_arrivee', 'desc')
+            ->value('destination');
     }
 
     /**
